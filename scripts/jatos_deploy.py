@@ -18,7 +18,12 @@ def parse_jzip_identity(path: Path) -> tuple[str, str]:
         names = [name for name in archive.namelist() if name.lower().endswith(".jas")]
         if len(names) != 1:
             raise SystemExit("JZIP must contain exactly one .jas study-properties file")
-        properties = json.loads(archive.read(names[0]).decode("utf-8"))
+        archive_root = json.loads(archive.read(names[0]).decode("utf-8"))
+    if not isinstance(archive_root, dict):
+        raise SystemExit("JZIP study-properties file must contain a JSON object")
+    properties = archive_root.get("data", archive_root)
+    if not isinstance(properties, dict):
+        raise SystemExit("JZIP study-properties data must contain a JSON object")
     title = str(properties.get("title", ""))
     study_uuid = str(properties.get("uuid", ""))
     if not title or not study_uuid:

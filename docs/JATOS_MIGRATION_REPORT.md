@@ -1,6 +1,6 @@
 # JATOS Migration Report — Mouse Version
 
-Status: local implementation in progress; MindProbe API/deployment intentionally pending.
+Status: local implementation and JATOS 3.11.1 acceptance passed; MindProbe API/deployment intentionally pending.
 
 ## A. File changes
 
@@ -28,24 +28,33 @@ Deleted: none.
 
 ## C. Data comparison
 
-Adapter tests verify that the same mouse trial fields reach Supabase bulk rows and JATOS trial records without changing `responseKey`. A full browser run and final field-by-field fixture report are still pending.
+Adapter tests verify that the same mouse trial fields reach Supabase bulk rows and JATOS trial records without changing `responseKey`. The full JATOS browser run produced 20 formal trial records containing the original behavioral fields, including both `left` and `right` response values, plus the required traceability envelope. The run ended with exactly one final record and zero probe-plan violations.
+
+The original Supabase-compatible entry was also loaded independently and reached the unchanged mouse instructions while its placeholder configuration remained local-only. No Supabase table, source implementation, or configuration was removed.
 
 ## D. MindProbe
 
-- Study ID/UUID: pending
-- Component IDs: pending
-- Test link: pending
+- Study ID/UUID: pending production import
+- Component IDs: pending production import
+- Test link: pending production import
 - Deployment timestamp: pending
-- Git commit: pending release commit
+- Release asset Git commit: `350900bfbf2c5a8cfd09d4e3e64322e2f686d10c`
 
-No MindProbe API call has been made. `JATOS_BASE_URL` and `JATOS_API_TOKEN` will be requested only when the read-only health check is ready; the token must be configured outside chat/repository.
+No MindProbe API call has been made. `JATOS_BASE_URL` and `JATOS_API_TOKEN` will be used only from the process environment when the read-only health check is authorized; the token must not be pasted into chat or stored in the repository.
+
+## Local JATOS acceptance evidence
+
+- source instance: study 33, component 33;
+- source Study UUID: `c4ea1f27-605d-4062-a9c1-1c56863e850b`;
+- component UUID: `b76b08f7-9484-41f9-a05f-9160e04aee42`;
+- completed result: 26 NDJSON records and `FINISHED` state;
+- early-exit result: session + one formal trial retained, no final record;
+- official archive: `release/build/CLT-VWM-Mouse-1.0.0-jatos-m.1.jzip` (Git-ignored);
+- clean-instance portability: passed as study 1/component 1 on a second JATOS 3.11.1 instance.
 
 ## E. Remaining work
 
-- full corrected mouse-version local JATOS smoke test;
-- early-exit/refresh and preserved-source checks;
-- official JZIP export and clean-instance import;
-- commit/push only the migration branch;
+- push only the migration branch;
 - read-only MindProbe health check after environment configuration;
 - first import, production smoke, recorded IDs/link/commit;
 - first result export to an approved lab cloud directory.

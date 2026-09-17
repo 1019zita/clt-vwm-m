@@ -77,10 +77,15 @@ class JatosClient:
                          *, accept: str = "application/json") -> tuple[dict[str, Any], int]:
         boundary = f"----cltvwmm{secrets.token_hex(16)}"
         filename = file_path.name.replace('"', "")
+        file_content_type = (
+            "application/zip"
+            if file_path.suffix.lower() in {".jzip", ".zip"}
+            else "application/octet-stream"
+        )
         prefix = (
             f"--{boundary}\r\n"
             f'Content-Disposition: form-data; name="{field_name}"; filename="{filename}"\r\n'
-            "Content-Type: application/octet-stream\r\n\r\n"
+            f"Content-Type: {file_content_type}\r\n\r\n"
         ).encode("utf-8")
         suffix = f"\r\n--{boundary}--\r\n".encode("utf-8")
         body = prefix + file_path.read_bytes() + suffix
