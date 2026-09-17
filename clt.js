@@ -53,7 +53,7 @@
 
 // 运行版本标记（与 clt.html 中 clt.js?v= 保持一致）：
 // 用于确认浏览器实际加载的是最新代码，而非缓存里的旧版本
-const CLT_BUILD = '20260917m1';
+const CLT_BUILD = '20260917mj1';
 console.log('[CLT] build ' + CLT_BUILD + ' loaded');
 
 // 在设置页显示当前 build（确认浏览器加载的是最新代码，而非缓存中的旧版）
@@ -75,9 +75,7 @@ console.log('[CLT] build ' + CLT_BUILD + ' loaded');
     }
 })();
 
-let supabaseClient = null;
-const SUPABASE_URL = "YOUR_SUPABASE_URL_HERE";
-const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY_HERE";
+const storage = window.CLTStorage;
 let p = {};
 let stimData = [];
 let practiceData = [];
@@ -286,22 +284,32 @@ document.getElementById('start-btn').addEventListener('click', async () => {
     seedRandom(p.rndSeed);
 
     try {
-        if (SUPABASE_URL !== "YOUR_SUPABASE_URL_HERE") {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-                auth: { persistSession: false }
-            });
-        }
-    } catch (err) { console.error("Supabase init failed", err); }
-
-    try {
         if (document.documentElement.requestFullscreen) {
             await document.documentElement.requestFullscreen();
         }
     } catch (err) { console.log("Fullscreen denied."); }
 
+    try {
+        if (!storage) throw new Error('Storage adapter is unavailable');
+        await storage.initializeStorage({ participant: { ...p }, build: CLT_BUILD });
+    } catch (err) {
+        console.error('[CLT storage] initialization failed:', err);
+        if (storage && storage.backendName === 'jatos') {
+            showSetupError('JATOS 初始化失败，实验尚未开始。请联系实验管理员。');
+            return;
+        }
+    }
+
     switchScreen('instructions');
     experimentPhase = 'instructions';
 });
+
+function showSetupError(message) {
+    const el = document.getElementById('build-mismatch');
+    if (!el) return;
+    el.innerText = message;
+    el.classList.remove('hidden');
+}
 
 function switchScreen(screenName) {
     for (let key in screens) screens[key].classList.add('hidden');
@@ -729,7 +737,13 @@ function recordResponse(responseNum, mouseButton) {
     trialData.responseKey = mouseButton;               // left=确定，right=不确定
     trialData.accuracy = (responseNum === correctLabel) ? 1 : 0;
 
-    stimData.push(Object.assign({}, trialData));
+    const completedTrial = Object.assign({}, trialData);
+    stimData.push(completedTrial);
+    if (storage) {
+        storage.saveTrial(prepareStorageRow(completedTrial)).catch(error => {
+            console.error('[CLT storage] trial save failed:', error);
+        });
+    }
 
     drawBackground(); drawFixation();
     currentTrial++;
@@ -771,6 +785,18 @@ function endBlock() {
     // 已取消「累计 2 个 block 低于 50% 自动结束实验」的规则：
     // 无论正确率高低，实验都完整跑完 4 个 block，低正确率只在导出文件名上加 F。
     if (blockAcc < 50) lowAccBlockCount++;
+
+    if (storage) {
+        storage.saveCheckpoint({
+            subjectID: p.subjectID,
+            block: currentBlock,
+            blockAccuracy: blockAcc,
+            completedTrials: stimData.length,
+            nextBlock: currentBlock < prefs.numBlocks ? currentBlock + 1 : null
+        }).catch(error => {
+            console.error('[CLT storage] checkpoint save failed:', error);
+        });
+    }
 
     if (currentBlock < prefs.numBlocks) {
         showBreakScreen(blockAcc);
@@ -827,32 +853,27 @@ function nextBlock() {
 // 保存前统一补齐被试信息（保证每一行都带完整的被试信息）
 function enrichRows(rows) {
     for (let d of rows) {
-        d.subName = p.subName;
-        d.subGender = p.subGender;
-        d.subAge = p.subAge;
-        d.subIdCard = maskIdCard(p.subIdCard); // 导出掩蔽后的身份证号
-        d.subPhone = p.subPhone;
-        d.subjectID = p.subjectID;
-        d.rndSeed = p.rndSeed;
+        Object.assign(d, prepareStorageRow(d));
     }
     return rows;
+}
+
+function prepareStorageRow(row) {
+    return {
+        ...row,
+        subName: p.subName,
+        subGender: p.subGender,
+        subAge: p.subAge,
+        subIdCard: maskIdCard(p.subIdCard),
+        subPhone: p.subPhone,
+        subjectID: p.subjectID,
+        rndSeed: p.rndSeed
+    };
 }
 
 // ============================================================
 //  数据保存
 // ============================================================
-// 兜底列：若服务器数据表尚未包含 CLT 新增列，剔除后重试一次
-const BASE_COLUMNS = [
-    'subjectID', 'subName', 'subGender', 'subAge', 'subIdCard', 'subPhone',
-    'block', 'trial', 'setSize', 'isChange', 'experimentType',
-    'rt', 'response', 'accuracy', 'correctResponse', 'rndSeed'
-];
-function stripToBaseColumns(row) {
-    const out = {};
-    for (const k of BASE_COLUMNS) if (row[k] !== undefined) out[k] = row[k];
-    return out;
-}
-
 async function finishExperiment() {
     switchScreen('upload');
     experimentPhase = 'upload';
@@ -861,27 +882,29 @@ async function finishExperiment() {
     let uploadFailed = false;
 
     enrichRows(stimData);
+    ss4LowAccuracyFlag = computeLowAccuracyFlag();
 
-    if (supabaseClient && stimData.length > 0) {
+    if (storage && stimData.length > 0) {
         try {
-            const { error } = await supabaseClient.from('vwm_data').insert(stimData);
-            if (error) throw error;
-            uploadMsg += "数据上传服务器成功。";
+            const saveResult = await storage.saveFinalResult({
+                trials: stimData,
+                probePlanViolations: probePlanViolations,
+                lowAccuracyFlag: ss4LowAccuracyFlag,
+                lowAccuracyBlockCount: lowAccBlockCount
+            });
+            uploadMsg += saveResult && saveResult.message ? saveResult.message : '数据保存成功。';
+            await storage.finishExperiment({ successful: true, message: 'CLT mouse completed' });
         } catch (error) {
-            console.error("Supabase Error:", error);
-            // 兼容旧表结构：剔除 CLT 新增列后重试
+            console.error('[CLT storage] final save failed:', error);
+            uploadFailed = true;
+            uploadMsg += '服务器上传失败: ' + error.message + '。';
             try {
-                const { error: retryError } = await supabaseClient
-                    .from('vwm_data').insert(stimData.map(stripToBaseColumns));
-                if (retryError) throw retryError;
-                uploadMsg += "数据上传服务器成功（按基础字段）。";
-            } catch (retryErr) {
-                console.error("Supabase Retry Error:", retryErr);
-                uploadFailed = true;
-                uploadMsg += "服务器上传失败: " + retryErr.message + "。";
+                await storage.finishExperiment({ successful: false, message: 'CLT mouse persistence failed' });
+            } catch (finishError) {
+                console.error('[CLT storage] failed to close unsuccessful study:', finishError);
             }
         }
-    } else if (!supabaseClient) {
+    } else if (!storage) {
         uploadMsg += "本版本未配置服务器上传，仅生成本地 Excel。";
     }
 
@@ -912,7 +935,11 @@ async function finishExperiment() {
 
     setTimeout(() => { switchScreen('finished'); }, 2000);
 
-    try { if (document.exitFullscreen) document.exitFullscreen(); } catch (e) {}
+    try {
+        if (document.exitFullscreen && document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        }
+    } catch (e) {}
 }
 
 function downloadXLSX() {

@@ -12,7 +12,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <!-- 页面版本号：与 clt.js 的 CLT_BUILD 保持一致，用于检测浏览器是否缓存了旧 clt.js -->
-    <script>window.CLT_PAGE_BUILD = '20260917m1';</script>
+    <script>
+        window.CLT_PAGE_BUILD = '20260917mj1';
+        window.CLT_STORAGE_BACKEND = 'supabase';
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Excel 导出库：优先使用本地 vendor 版本（离线也能导出），失败再回退 CDN -->
     <script src="vendor/xlsx.full.min.js"></script>
@@ -189,7 +192,9 @@
     </div>
 
     <!-- 版本号用于强制刷新浏览器缓存，每次修改 clt.js 后请同步递增 -->
-    <script src="clt.js?v=20260917m1"></script>
+    <script src="src/storage/supabase-storage.js"></script>
+    <script src="src/storage/index.js"></script>
+    <script src="clt.js?v=20260917mj1"></script>
 </body>
 
 </html>
