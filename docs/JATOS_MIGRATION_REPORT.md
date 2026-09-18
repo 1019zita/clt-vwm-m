@@ -1,6 +1,6 @@
 # JATOS Migration Report — Mouse Version
 
-Status: local implementation and JATOS 3.11.1 acceptance passed; MindProbe API/deployment intentionally pending.
+Status: local implementation, JATOS 3.11.1 acceptance, MindProbe deployment, and production smoke test passed.
 
 ## A. File changes
 
@@ -34,13 +34,16 @@ The original Supabase-compatible entry was also loaded independently and reached
 
 ## D. MindProbe
 
-- Study ID/UUID: pending production import
-- Component IDs: pending production import
-- Test link: pending production import
-- Deployment timestamp: pending
+- Study ID/UUID: 28510 / `c4ea1f27-605d-4062-a9c1-1c56863e850b`
+- Component ID/UUID: 48853 / `b76b08f7-9484-41f9-a05f-9160e04aee42`
+- Default batch ID/UUID: 32283 / `10707cda-c403-4818-8c52-6417f2c5a5e0`
+- Test link: `https://jatos.mindprobe.eu/publix/zLEfFBEQ64g` (Personal Multiple)
+- Deployment timestamp: `2026-09-17T15:09:54.029Z`
 - Release asset Git commit: `350900bfbf2c5a8cfd09d4e3e64322e2f686d10c`
 
-No MindProbe API call has been made. `JATOS_BASE_URL` and `JATOS_API_TOKEN` will be used only from the process environment when the read-only health check is authorized; the token must not be pasted into chat or stored in the repository.
+The production debug run completed as Study Result 1247899 / Component Result 1735184. API metadata reports both states as `FINISHED`; the 24.4 kB result contains 26 newline-delimited records: one session start, 20 formal trials, four checkpoints, and one final record. Blocks 1-4 each contain trials 1-5; response keys are evenly split between `left` and `right`; the final record reports 20 trials and zero probe-plan violations. The result records identify version `1.0.0-jatos-m.1` and the release asset commit above.
+
+`JATOS_BASE_URL` and `JATOS_API_TOKEN` were read only from the ignored local process-environment loader. The token was not printed, documented, committed, or copied into an example.
 
 ## Local JATOS acceptance evidence
 
@@ -54,9 +57,9 @@ No MindProbe API call has been made. `JATOS_BASE_URL` and `JATOS_API_TOKEN` will
 
 ## E. Remaining work
 
-- push only the migration branch;
-- read-only MindProbe health check after environment configuration;
-- first import, production smoke, recorded IDs/link/commit;
-- first result export to an approved lab cloud directory.
+- choose the participant-access strategy for formal collection (the current published test link is Personal Multiple; the imported default batch does not permit General Multiple);
+- specify the laboratory-approved cloud directory and retention policy, then run the first result archive export;
+- optionally ask the MindProbe administrator to investigate the HTTP 500 returned when managing the unused General Multiple study code;
+- review and merge `migration/jatos-mindprobe` only after laboratory acceptance.
 
 Supabase remains intact and must not be decommissioned before acceptance.

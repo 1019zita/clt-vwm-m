@@ -1,6 +1,6 @@
 # JATOS Smoke Test — Mouse Version
 
-Status: local migration smoke test passed on the corrected mouse repository. Production MindProbe checks are pending.
+Status: local and production MindProbe migration smoke tests passed on the corrected mouse repository.
 
 ## Automated preflight (2026-09-17)
 
@@ -45,4 +45,39 @@ Component UUID: `b76b08f7-9484-41f9-a05f-9160e04aee42`.
 The release archive is `release/build/CLT-VWM-Mouse-1.0.0-jatos-m.1.jzip` (ignored by Git), SHA-256
 `5E7F05F8BB33FC7AB7E25C1E083D63EE674174FFCE636C9AE54DFE7971F25662`. Its filename and content scans found no participant results, secrets, token, `.env`, or Supabase configuration.
 
-MindProbe checks remain pending until `JATOS_BASE_URL` and `JATOS_API_TOKEN` are supplied through the process environment. Do not remove Supabase before production import and result-export acceptance pass.
+## Production MindProbe test (2026-09-17 to 2026-09-18)
+
+Environment: `https://jatos.mindprobe.eu`, authenticated only through process environment variables.
+
+| Check | Result |
+|---|---|
+| Read-only API health check | Pass: study-properties endpoint returned successfully before import |
+| Official Study import | Pass: study 28510 / component 48853 / default batch 32283 |
+| Production entry and assets | Pass: HTTP 200, `jatos.js` present, build `20260917mj1` |
+| Mouse instructions | Pass: left-click certain/right-click uncertain |
+| Practice and formal progression | Pass: 10 practice trials and 20 debug formal trials |
+| Block structure and breaks | Pass: four blocks of five trials with the unchanged 30-second minimum breaks |
+| Browser console | Pass: no error; one expected debug-ID fallback warning only |
+| Normal completion page | Pass: thank-you page and device-local `1111.xlsx` download link shown |
+| JATOS completion metadata | Pass: Study Result 1247899 / Component Result 1735184 are `FINISHED`, duration `00:07:21` |
+| Production result count | Pass: 1 session + 20 trials + 4 checkpoints + 1 final = 26 records |
+| Mouse response field | Pass: 10 `left` and 10 `right` formal responses |
+| Trial/block identity | Pass: blocks 1-4 each contain trials 1-5 |
+| Result traceability | Pass: version `1.0.0-jatos-m.1`, Git commit `350900bfbf2c5a8cfd09d4e3e64322e2f686d10c` |
+| Scientific invariant | Pass: final record reports `probe_plan_violations=0` |
+| Participant result files | Pass: no JATOS result files required; behavioral data stored as append-only result data |
+
+Production identifiers:
+
+- Study: 28510 / `c4ea1f27-605d-4062-a9c1-1c56863e850b`
+- Component: 48853 / `b76b08f7-9484-41f9-a05f-9160e04aee42`
+- Default batch: 32283 / `10707cda-c403-4818-8c52-6417f2c5a5e0`
+- Personal Multiple test link: `https://jatos.mindprobe.eu/publix/zLEfFBEQ64g`
+- Import time: `2026-09-17T15:09:54.029Z`
+- Completed smoke result time: `2026-09-18T03:03:53.560Z`
+
+Two non-completed test results are intentionally retained as diagnostic evidence: Study Result 1247566 (`STARTED`, zero data) and Study Result 1247567 (`DATA_RETRIEVED`, 13.1 kB partial data). They are not participant data and were not deleted because result deletion was outside the authorized deployment scope.
+
+The imported default batch accepts Personal Single/Personal Multiple workers. A General Multiple code therefore could not run. MindProbe also returned HTTP 500 when the unused General Multiple code was queried/deactivated through its API, so it was left untouched and is not the published test link.
+
+Do not remove Supabase. The remaining acceptance item is the first archive export to a laboratory-approved cloud directory chosen by the researcher.
