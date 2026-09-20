@@ -1,10 +1,15 @@
 *.bak-*
 .env
 .env.*
+!.env.example
+secrets/
 build/
 release/
 results/
 result-backups/
+participant-results/
+result-exports/
+tmp-exports/
 *.jzip
 *.jrzip
 *.zip

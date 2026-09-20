@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Documentation
+
+- Added repository-level source-of-truth, scientific-logic, deployment, and data-safety instructions for future agents.
+- Added a verified MindProbe/JATOS deployment runbook, successor handoff guide, reusable new-experiment checklist, and environment-variable template.
+- Documented that local JATOS is the current DEV/test environment; no separate remote DEV or release tag has been confirmed.
+- Expanded ignore rules for secrets and participant/result export directories without changing experiment behavior or the current deployment.
+
 ## [1.0.0-jatos-m.1] - 2026-09-18
 
 ### Added
