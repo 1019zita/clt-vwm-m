@@ -965,67 +965,21 @@ async function finishExperiment() {
 }
 
 function downloadXLSX() {
-    if (stimData.length === 0) return;
+    const p = payload.subjectInfo || {};
 
-    // 低正确率标记：set size = 4 的平均正确率 < 50% → 导出文件名前面加 F
-    // （实验流程不受影响，永远跑完 4 个 block）
+    // 计算 SS4 低正确率标记
     ss4LowAccuracyFlag = computeLowAccuracyFlag();
 
     // ============================================================
-    //  Sheet 1：被试信息
+    //  Sheet 1: Trial Data（对齐 CDT 风格，包含全部试次及被试人口统计学字段）
     // ============================================================
-    const infoRows = [{
-        姓名: p.subName,
-        性别: p.subGender,
-        年龄: p.subAge,
-        身份证号: maskIdCard(p.subIdCard),   // 掩蔽后导出（前4位 + * + 后6位）
-        手机号: p.subPhone
-    }];
-    const infoSheet = XLSX.utils.json_to_sheet(infoRows, {
-        header: ['姓名', '性别', '年龄', '身份证号', '手机号']
-    });
-    infoSheet['!cols'] = [{ wch: 14 }, { wch: 10 }, { wch: 8 }, { wch: 26 }, { wch: 16 }];
+    const trialSheet = XLSX.utils.json_to_sheet(stimData);
 
     // ============================================================
-    //  Sheet 2：实验数据（所有 trial）
-    //  SetSize / 正确色块 / 被试选择色块 / 鼠标判断 / 反应时 / 是否正确(1正确,0错误)
+    //  Sheet 2: K Values（对齐 CDT 风格，按 set size 汇总正确率、反应时与容量 K）
+    //  CLT 公式: K = (Acc * N^2 - N) / (N - 1)
     // ============================================================
-    const trialRows = stimData.map(d => {
-        let map = [];
-        try { map = JSON.parse(d.labelMap || '[]'); } catch (e) { map = []; }
-        const correctItem = Number.isInteger(map[d.correctResponse - 1])
-            ? map[d.correctResponse - 1] + 1 : d.correctResponse;
-        const selectedItem = Number.isInteger(map[d.response - 1])
-            ? map[d.response - 1] + 1 : d.response;
-        const mouseDecision = d.responseKey === 'left' ? '左键-确定'
-            : d.responseKey === 'right' ? '右键-不确定'
-            : (d.responseKey || '');
-        return {
-            被试编号: p.subjectID,
-            Block: d.block,
-            Trial: d.trial,
-            SetSize: d.setSize,
-            正确色块序号: correctItem,
-            被试选择色块序号: selectedItem,
-            鼠标判断: mouseDecision,
-            反应时: (typeof d.rt === 'number') ? Math.round(d.rt * 10000) / 10000 : '',
-            是否正确: d.accuracy
-        };
-    });
-    const trialSheet = XLSX.utils.json_to_sheet(trialRows, {
-        header: ['被试编号', 'Block', 'Trial', 'SetSize', '正确色块序号', '被试选择色块序号', '鼠标判断', '反应时', '是否正确']
-    });
-    trialSheet['!cols'] = [
-        { wch: 12 }, { wch: 7 }, { wch: 7 }, { wch: 9 },
-        { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 10 }, { wch: 10 }
-    ];
-
-    // ============================================================
-    //  Sheet 3：实验结果（按 set size 分别汇总）
-    //  Acc = 正确率；RT = 平均反应时（正确试次，秒）
-    //  K   = (Acc * N^2 - N) / (N - 1)
-    // ============================================================
-    const resRows = [];
+    const kData = [];
     for (let ss of prefs.setSizes) {
         const rows = stimData.filter(d => d.setSize === ss);
         const nTotal = rows.length;
@@ -1040,75 +994,35 @@ function downloadXLSX() {
         const N = ss;
         const K = N > 1 ? (acc * N * N - N) / (N - 1) : '';
 
-        resRows.push({
-            被试编号: p.subjectID,
+        kData.push({
+            SubjectID: p.subjectID,
+            ExperimentType: 'CLT-VWM-Mouse',
             SetSize: ss,
-            试次数: nTotal,
-            正确数: nCorrect,
-            Acc: Math.round(acc * 10000) / 10000,
-            RT: rtMean === '' ? '' : Math.round(rtMean * 10000) / 10000,
-            K: K === '' ? '' : Math.round(K * 10000) / 10000,
-            // 1 = SS4 平均正确率低于 50%（导出文件名前面带 F）；0 = 正常
-            低正确率标记: ss4LowAccuracyFlag ? 1 : 0,
-            低正确率Block数: lowAccBlockCount
+            TotalTrials: nTotal,
+            CorrectTrials: nCorrect,
+            Accuracy: acc.toFixed(4),
+            MeanRT: rtMean === '' ? '' : rtMean.toFixed(4),
+            K: typeof K === 'number' ? K.toFixed(4) : '',
+            LowAccFlag: ss4LowAccuracyFlag ? 1 : 0,
+            LowAccBlockCount: lowAccBlockCount
         });
     }
-    const resSheet = XLSX.utils.json_to_sheet(resRows, {
-        header: ['被试编号', 'SetSize', '试次数', '正确数', 'Acc', 'RT', 'K', '低正确率标记', '低正确率Block数']
-    });
-    resSheet['!cols'] = [
-        { wch: 12 }, { wch: 9 }, { wch: 8 }, { wch: 8 },
-        { wch: 9 }, { wch: 9 }, { wch: 9 }, { wch: 13 }, { wch: 15 }
-    ];
-
-    // ============================================================
-    //  文本列保护：被试编号 / 手机号 / 身份证号 一律按文本写入
-    //  （否则 Excel 会把纯数字当成数值，前导 0 被省略）
-    // ============================================================
-    function forceTextCells(sheet, headerList, colNames) {
-        if (!sheet['!ref']) return;
-        const range = XLSX.utils.decode_range(sheet['!ref']);
-        for (const name of colNames) {
-            const c = headerList.indexOf(name);
-            if (c < 0) continue;
-            for (let r = range.s.r + 1; r <= range.e.r; r++) {
-                const addr = XLSX.utils.encode_cell({ r, c });
-                const cell = sheet[addr];
-                if (!cell || cell.v === undefined || cell.v === null || cell.v === '') continue;
-                cell.t = 's';
-                cell.v = String(cell.v);
-                cell.z = '@';   // 文本格式
-                delete cell.w;
-            }
-        }
-    }
-    forceTextCells(infoSheet, ['姓名', '性别', '年龄', '身份证号', '手机号'], ['身份证号', '手机号']);
+    const kSheet = XLSX.utils.json_to_sheet(kData);
 
     // === 生成 Excel 文件 ===
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, infoSheet, '被试信息');
-    XLSX.utils.book_append_sheet(wb, trialSheet, '实验数据');
-    XLSX.utils.book_append_sheet(wb, resSheet, '实验结果');
+    XLSX.utils.book_append_sheet(wb, trialSheet, 'Trial Data');
+    XLSX.utils.book_append_sheet(wb, kSheet, 'K Values');
 
-    forceTextCells(trialSheet, ['被试编号', 'Block', 'Trial', 'SetSize', '正确色块序号', '被试选择色块序号', '鼠标判断', '反应时', '是否正确'], ['被试编号', '鼠标判断']);
-    forceTextCells(resSheet, ['被试编号', 'SetSize', '试次数', '正确数', 'Acc', 'RT', 'K', '低正确率标记', '低正确率Block数'], ['被试编号']);
-
-    // 文件名：
-    //   正式实验：实验日期_被试编号（编号为原始数字字符串，前导 0 完整保留）；
-    //             set size = 4 的平均正确率低于 50% 时，最前面加 F
-    //   调试模式：固定为 1111.xlsx（编号与随机种子也都是 1111，不加 F）
-    //             （导出内容仍按正式实验规则：3 个 sheet、同样的表头与指标）
     let fileName;
     if (p.debugMode) {
-        fileName = '1111.xlsx';
+        fileName = p.subjectID + "_CLT_Mouse.xlsx";
     } else {
         const dateStr = p.expDate || formatDateYYYYMMDD(new Date());
         const filePrefix = ss4LowAccuracyFlag ? 'F' : '';
-        fileName = `${filePrefix}${dateStr}_${p.subjectID}.xlsx`;
+        fileName = (filePrefix || "") + (dateStr || "") + "_" + p.subjectID + "_CLT_Mouse.xlsx";
     }
-    console.log(`[CLT] 导出模式=${p.debugMode ? '调试' : '正式'} 被试编号=${p.subjectID}` +
-        ` SS4平均正确率=${ss4AccuracyPct() === null ? '无数据' : ss4AccuracyPct().toFixed(1) + '%'}` +
-        ` 文件名=${fileName}`);
+    console.log(`[CLT] 导出模式= 被试编号= 文件名=`);
     saveWorkbookFile(wb, fileName);
 }
 
