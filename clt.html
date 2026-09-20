@@ -70,13 +70,10 @@
                     <label for="subjectID">被试编号 (Subject ID — 自动生成)</label>
                     <input type="text" id="subjectID" readonly placeholder="由身份证后6位 + 手机后4位自动生成">
                 </div>
-                <!-- 两个「选项」已彻底移除（不再只是隐藏），避免任何情况下再次出现在设置页：
-                     ①「保存数据到本地」—— clt.js 中恒为 p.saveLocal = true，
-                        网页端数据库与本地 Excel 同时保存，不提供开关、不由被试/主试选择；
-                     ②「调试模式」—— 通过「姓名 / 年龄 / 身份证号 / 手机号 全部填 1」触发，
-                        不需要勾选框。
-                     注意：clt.js 不读取任何 id="saveLocal" / id="debugMode" 的元素，
-                     删除这两个复选框不影响任何逻辑。 -->
+                <div class="form-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="debugMode" style="width: auto; margin: 0;">
+                    <label for="debugMode" style="margin: 0; font-weight: normal;">调试模式 (Debug Mode — 少量试次，跳过休息)</label>
+                </div>
 
                 <button type="button" id="start-btn" class="btn primary">开始实验</button>
             </form>

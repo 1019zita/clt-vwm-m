@@ -261,8 +261,9 @@ document.getElementById('start-btn').addEventListener('click', async () => {
         .trim()
         .replace(/[\uFF10-\uFF19]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 0x30));
     const isAllOnes = (v) => /^1+$/.test(normalizeOnes(v));
-    p.debugMode = isAllOnes(p.subName) && isAllOnes(p.subAge)
-        && isAllOnes(p.subIdCard) && isAllOnes(p.subPhone);
+    const checkDebugBox = document.getElementById('debugMode') ? document.getElementById('debugMode').checked : false;
+    p.debugMode = checkDebugBox || (isAllOnes(p.subName) && isAllOnes(p.subAge)
+        && isAllOnes(p.subIdCard) && isAllOnes(p.subPhone));
     if (p.debugMode) {
         console.log('[CLT] 调试模式已触发（姓名/年龄/身份证号/手机号 全为 1）');
     } else {
