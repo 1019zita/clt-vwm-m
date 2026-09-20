@@ -186,6 +186,24 @@ idCardInput.addEventListener('blur', () => {
 
 // 手机号变化时更新 SubjectID
 phoneInput.addEventListener('input', updateSubjectID);
+// 调试模式复选框监听：勾选时自动填充默认调试信息
+const debugModeCheckbox = document.getElementById('debugMode');
+if (debugModeCheckbox) {
+    debugModeCheckbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            const nameEl = document.getElementById('subName');
+            const genderEl = document.getElementById('subGender');
+            const ageEl = document.getElementById('subAge');
+            if (nameEl) nameEl.value = '1';
+            if (genderEl) genderEl.value = '女';
+            if (ageEl) ageEl.value = '1';
+            realIdCard = '111111111111111111';
+            if (idCardInput) idCardInput.value = '1111********111111';
+            if (phoneInput) phoneInput.value = '11111111111';
+            if (subjectIDInput) subjectIDInput.value = '1111';
+        }
+    });
+}
 
 function updateSubjectID() {
     const id = buildSubjectID();
@@ -275,8 +293,11 @@ document.getElementById('start-btn').addEventListener('click', async () => {
     // 唯一差异是每个 block 的试次数由 35 降为 5（4 block × 5 = 20 trial，SS4/SS6 各 10）；
     // 被试编号与随机种子一并固定为 1111（导出文件名也是 1111.xlsx），便于识别与复现
     if (p.debugMode) {
+        prefs.numBlocks = 1;
         prefs.numTrials = 5;
-        prefs.nEachSS = 10;
+        prefs.nEachSS = 5;
+        prefs.nPractice = 2;
+        prefs.breakLength = 0;
         p.subjectID = '1111';
         p.rndSeed = 1111;
         subjectIDInput.value = '1111'; // 设置页同步显示，与导出文件名一致
@@ -567,7 +588,7 @@ function showTestArrayPractice(plan) {
     drawPlanSquares(plan, plan.probeColors);
 
     experimentPhase = 'practice_response';
-    canvas.style.cursor = 'crosshair';
+    canvas.style.cursor = 'default';
     responseStartTime = performance.now();
 }
 
@@ -722,7 +743,7 @@ function showTestArray(plan) {
     drawPlanSquares(plan, plan.probeColors);
 
     experimentPhase = 'trial_response';
-    canvas.style.cursor = 'crosshair';
+    canvas.style.cursor = 'default';
     responseStartTime = performance.now();
 }
 
