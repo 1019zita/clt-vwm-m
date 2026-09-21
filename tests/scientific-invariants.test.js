@@ -12,7 +12,7 @@ function fakeElement(id) {
     return {
         id, value: '', innerText: '', style: {},
         classList: { add() {}, remove() {} },
-        addEventListener() {}, appendChild() {}, remove() {}, reportValidity() { return true; },
+        addEventListener() {}, appendChild() {}, click() {}, remove() {}, reportValidity() { return true; },
         getContext() {
             return {
                 fillStyle: '', font: '', textAlign: '', textBaseline: '',
@@ -70,4 +70,20 @@ for (const setSize of [4, 6]) {
     }
 }
 assert.equal(vm.runInContext('probePlanViolations', context), 0);
+
+context.XLSX = {
+    utils: {
+        json_to_sheet(rows) { return { rows }; },
+        book_new() { return { SheetNames: [] }; },
+        book_append_sheet(workbook, _sheet, name) { workbook.SheetNames.push(name); }
+    },
+    write() { return new Uint8Array([0x50, 0x4B]); }
+};
+vm.runInContext(`
+    p = { subjectID: 'debug-export', debugMode: true };
+    stimData = [{ setSize: 4, accuracy: 1, rt: 500 }];
+    downloadXLSX();
+`, context);
+assert.equal(vm.runInContext('lastExport.fileName', context), 'debug-export_CLT_Mouse.xlsx');
+assert.deepEqual(Array.from(vm.runInContext('lastExport && [lastExport.size]', context)), [2]);
 console.log('scientific-invariants.test.js: PASS');

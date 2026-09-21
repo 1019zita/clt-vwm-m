@@ -965,8 +965,6 @@ async function finishExperiment() {
 }
 
 function downloadXLSX() {
-    const p = payload.subjectInfo || {};
-
     // 计算 SS4 低正确率标记
     ss4LowAccuracyFlag = computeLowAccuracyFlag();
 

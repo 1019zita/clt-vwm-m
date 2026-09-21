@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed local XLSX export failing because the shared debug/production export function referenced an undefined `payload` variable instead of the active participant settings.
+
 ### Documentation
 
 - Added repository-level source-of-truth, scientific-logic, deployment, and data-safety instructions for future agents.
