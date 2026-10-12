@@ -19,7 +19,26 @@
 | Default Batch | ID `32283` / UUID `10707cda-c403-4818-8c52-6417f2c5a5e0` |
 | 已验证入口 | `clt.html` |
 
-> 以上表格是 2026-09-18 已部署旧版的历史基线。当前仓库源码已更新为 `2.0.0-jatos-m.1` / build `20261011mj1`：3×5 条件、450 个正式试次、9 个 block、仅左键作答，并移除了 `responseKey`。新版本尚未完成浏览器 smoke test 或生产部署，不能沿用旧版验收结论。
+> 以上表格是 **1.0.0 的历史部署基线**（2026-09-18）。当前线上运行的是 2026-10-12 部署的
+> `2.0.0-jatos-m.1` / build `20261011mj1`：3×5 条件、450 个正式试次、9 个 block、仅左键作答，
+> 已移除 `responseKey`，入口由 `clt.html` 改为 `exp1_clt.html`。
+
+## 当前线上部署（2026-10-12）
+
+| 项目 | 当前值 |
+|---|---|
+| 分支 / commit | `migration/jatos-mindprobe` / `ff543d0`（已合并到 `main`） |
+| 实验版本 / build | `2.0.0-jatos-m.1` / `20261011mj1` |
+| MindProbe Study | ID `28510` / UUID `c4ea1f27-605d-4062-a9c1-1c56863e850b`（标题未改） |
+| Component | ID `48853` / UUID `b76b08f7-9484-41f9-a05f-9160e04aee42` |
+| 入口 | `exp1_clt.html`（旧 `clt.html` / `clt.js` 保留在线上，作为回滚路径） |
+| 生产 smoke | 结果 `1268661`，状态 `FINISHED`（15 练习 + 5 正式，console 无 error） |
+| 本地完整验收 | JATOS 3.11.1 正式模式跑完 450 试次 / 9 block × 50 / 8 次休息 / 15 条件各 30 |
+
+覆盖既有 Study 的方式：`scripts/jatos_deploy.py assets --apply` 上传新资产，
+再用 `PATCH /jatos/api/v1/components/{componentId}` 把 `htmlFilePath` 改为新入口名
+（JATOS 的 study import 只能创建新 Study，无法覆盖既有 Study；`DELETE /studies/{id}/assets/{path}`
+可清理旧入口文件，当前有意保留以便回滚）。
 
 当前没有独立的远程 DEV MindProbe 环境。本项目实际采用本地 JATOS 作为 DEV/test，MindProbe 作为托管部署环境。创建新的远程 DEV/PROD 分层需要人工决定，不能假定已经存在。
 
