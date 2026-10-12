@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the project documentation for the deployed JATOS adaptations: queued NDJSON records, final CSV result-file upload, `1111` debug participant handling, and the shared debug/production finalization and local XLSX export path.
+
 ### Fixed
 
 - Fixed local XLSX export failing because the shared debug/production export function referenced an undefined `payload` variable instead of the active participant settings.

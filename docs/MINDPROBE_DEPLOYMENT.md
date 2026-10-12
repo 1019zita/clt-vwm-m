@@ -89,8 +89,10 @@ JATOS adapter 的已验证行为：
 - 写入 `session_start`、每个正式 `trial`、每个 block 的 `checkpoint` 和 `final`；
 - 完成时先 flush，再调用 `endStudyWithoutRedirect`，必要时 fallback 到 `endStudyAjax`；
 - 不使用 `submitResultData` 反复覆盖前序 trial；
-- 不上传 result file，因为行为结果使用 result data；
+- 正常结束时额外上传带会话元数据的正式 trial CSV result file；
 - 保留设备端 XLSX 下载。
+
+CLT-M 调试模式固定使用被试编号 `1111`、1 个 block × 5 个正式试次并跳过 block 间休息；姓名、年龄、身份证号和手机号全部为 `1` 时也会触发该模式。调试模式和正式模式共用 JATOS finalization、CSV 上传和本机 XLSX 导出代码，但调试试次数不代表正式研究设计。
 
 实验自有路径保持相对路径。Google Fonts 和 SheetJS CDN fallback 仍是外部资源；本地 `vendor/xlsx.full.min.js` 是 XLSX 主依赖。
 

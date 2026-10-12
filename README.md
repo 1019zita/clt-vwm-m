@@ -12,7 +12,7 @@
 - **MindProbe/JATOS = online runtime + data collection**：运行已审核的构建产物并收集结果，不是源码编辑位置。
 - **实验室批准的云盘 = 长期结果备份**：保存从 JATOS 导出的结果归档及校验文件。
 
-数据有两条输出路径：JATOS 构建会把正式 trial 逐条追加到服务器；实验正常结束时也会在访问设备上生成 XLSX。设备端 XLSX 是便利副本，不是服务器结果的替代品。源 `clt.html` 仍保留 Supabase 兼容入口和占位配置，legacy Supabase 实现尚未删除。
+数据有三条输出路径：JATOS 构建会把正式 trial 逐条追加到服务器，正常结束时上传带会话元数据的 CSV result file，并在访问设备上生成 XLSX。设备端 XLSX 是便利副本，不是服务器结果的替代品。CLT-M 的调试模式使用被试编号 `1111`、1 个 block × 5 个正式试次并跳过 block 间休息；正式模式仍使用完整试次设计。源 `clt.html` 仍保留 Supabase 兼容入口和占位配置，legacy Supabase 实现尚未删除。
 
 ## 当前已验证状态
 
