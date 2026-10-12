@@ -16,8 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "build" / "study-assets"
 FILES = (
     "index.html",
-    "clt.html",
-    "clt.js",
+    "exp1_clt.html",
+    "exp1_clt.js",
     "style.css",
     "VERSION",
     "vendor/xlsx.full.min.js",
@@ -56,6 +56,14 @@ def sha256(path: Path) -> str:
 
 
 def build(output: Path) -> None:
+    # src/storage 是共享存储模板子模块：没取子模块时给出明确指引，
+    # 而不是让 shutil 抛一个看不出原因的 FileNotFoundError。
+    missing = [relative for relative in FILES if not (ROOT / relative).is_file()]
+    if missing:
+        hint = ""
+        if any(relative.startswith("src/storage/") for relative in missing):
+            hint = "\n提示：src/storage 是 git submodule，先运行 git submodule update --init --recursive"
+        raise SystemExit("缺少构建输入文件：" + ", ".join(missing) + hint)
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)
@@ -63,7 +71,7 @@ def build(output: Path) -> None:
         source = ROOT / relative
         target = output / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        if relative == "clt.html":
+        if relative == "exp1_clt.html":
             target.write_text(transform_html(source.read_text(encoding="utf-8")), encoding="utf-8")
         else:
             shutil.copy2(source, target)
@@ -73,7 +81,7 @@ def build(output: Path) -> None:
         "experiment_version": version,
         "git_commit": git_commit(),
         "built_at_utc": datetime.now(timezone.utc).isoformat(),
-        "component_entry": "clt.html",
+        "component_entry": "exp1_clt.html",
         "response_mode": "mouse",
     }
     (output / "build-info.json").write_text(

@@ -29,6 +29,8 @@ GitHub repository 是源码唯一可信源。所有修改应在分支中完成�
 
 这些值未来会变化；接手时必须重新运行 `git status`、`git branch -vv`、`git log --oneline --decorate --graph`。
 
+当前源码为实验版本 `2.0.0-jatos-m.1` / build `20261011mj1`，采用 set size 3/4/6 × 五档呈现时长、450 个正式试次、9 个 block、15 个练习试次和仅左键作答，并已移除 `responseKey`。上述线上 assets 与历史 smoke-test 报告仍对应旧版；新版本在部署前必须重新完成本地 JATOS 与生产 smoke test。
+
 ## 3. MindProbe 的角色
 
 MindProbe/JATOS 负责在线运行和保存当前 participant results。它不是源码母版，也不是实验室唯一长期备份。当前 Study ID `28510`、Component ID `48853`；不要仅凭这些历史值执行写操作，先通过只读 health check 和 Study properties 再确认。
@@ -64,7 +66,7 @@ python scripts/jatos_healthcheck.py
 python -m http.server 8000
 ```
 
-访问 `http://localhost:8000/clt.html`。运行根 README 中的全部自动检查，然后用 `python scripts/build_study_assets.py` 生成 JATOS assets。源入口是 Supabase-compatible/local-XLSX 模式；JATOS 必须使用构建入口。
+访问 `http://localhost:8000/exp1_clt.html`。运行根 README 中的全部自动检查，然后用 `python scripts/build_study_assets.py` 生成 JATOS assets。源入口是 Supabase-compatible/local-XLSX 模式；JATOS 必须使用构建入口。
 
 ## 7. 测试部署
 
@@ -135,7 +137,7 @@ python scripts/jatos_export_results.py `
 - 直接修改 `main`；
 - 使用 `git reset --hard` 丢弃未保存工作；
 - 手工修改 JZIP metadata；
-- 把 source `clt.html` 误当成构建后的 JATOS entry。
+- 把 source `exp1_clt.html` 误当成构建后的 JATOS entry。
 
 回滚前先导出 Results 和当前 Study。任何删除都不可用“回滚代码”恢复 participant results。
 

@@ -2,6 +2,8 @@
 
 Status: local implementation, JATOS 3.11.1 acceptance, MindProbe deployment, and production smoke test passed.
 
+> Historical migration record: the preserved 140-trial, SS4/SS6, left/right `responseKey` behavior below applies to `1.0.0-jatos-m.1` only. Current source `2.0.0-jatos-m.1` has a new 3×5 design and has not yet received equivalent browser or production acceptance.
+
 ## A. File changes
 
 New: `VERSION`, `CHANGELOG.md`, migration/deployment/smoke/storage/report docs, `src/storage/*`, `scripts/*`, and `tests/*`.

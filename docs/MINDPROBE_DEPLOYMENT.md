@@ -19,6 +19,8 @@
 | Default Batch | ID `32283` / UUID `10707cda-c403-4818-8c52-6417f2c5a5e0` |
 | 已验证入口 | `clt.html` |
 
+> 以上表格是 2026-09-18 已部署旧版的历史基线。当前仓库源码已更新为 `2.0.0-jatos-m.1` / build `20261011mj1`：3×5 条件、450 个正式试次、9 个 block、仅左键作答，并移除了 `responseKey`。新版本尚未完成浏览器 smoke test 或生产部署，不能沿用旧版验收结论。
+
 当前没有独立的远程 DEV MindProbe 环境。本项目实际采用本地 JATOS 作为 DEV/test，MindProbe 作为托管部署环境。创建新的远程 DEV/PROD 分层需要人工决定，不能假定已经存在。
 
 ## A. 前置条件
@@ -75,7 +77,7 @@ finishExperiment(status)
 - `src/storage/supabase-storage.js`：保留 legacy Supabase-compatible implementation；
 - `src/storage/jatos-storage.js`：集中处理 JATOS 生命周期与结果写入。
 
-源 `clt.html` 默认仍加载 Supabase adapter。`scripts/build_study_assets.py` 在构建目录中执行三项替换：
+源 `exp1_clt.html` 默认仍加载 Supabase adapter。`scripts/build_study_assets.py` 在构建目录中执行三项替换：
 
 1. `CLT_STORAGE_BACKEND` 从 `supabase` 改为 `jatos`；
 2. Supabase CDN script 改为 `<script src="jatos.js"></script>`；
@@ -89,10 +91,8 @@ JATOS adapter 的已验证行为：
 - 写入 `session_start`、每个正式 `trial`、每个 block 的 `checkpoint` 和 `final`；
 - 完成时先 flush，再调用 `endStudyWithoutRedirect`，必要时 fallback 到 `endStudyAjax`；
 - 不使用 `submitResultData` 反复覆盖前序 trial；
-- 正常结束时额外上传带会话元数据的正式 trial CSV result file；
+- 不上传 result file，因为行为结果使用 result data；
 - 保留设备端 XLSX 下载。
-
-CLT-M 调试模式固定使用被试编号 `1111`、1 个 block × 5 个正式试次并跳过 block 间休息；姓名、年龄、身份证号和手机号全部为 `1` 时也会触发该模式。调试模式和正式模式共用 JATOS finalization、CSV 上传和本机 XLSX 导出代码，但调试试次数不代表正式研究设计。
 
 实验自有路径保持相对路径。Google Fonts 和 SheetJS CDN fallback 仍是外部资源；本地 `vendor/xlsx.full.min.js` 是 XLSX 主依赖。
 
@@ -101,17 +101,18 @@ CLT-M 调试模式固定使用被试编号 `1111`、1 个 block × 5 个正式�
 ### 1. 自动检查
 
 ```powershell
-node --check clt.js
+git submodule update --init --recursive
+node --check exp1_clt.js
 node --check src/storage/index.js
 node --check src/storage/supabase-storage.js
 node --check src/storage/jatos-storage.js
-node --test tests/storage-adapters.test.js tests/scientific-invariants.test.js
+node --test src/storage/tests/storage-adapters.test.js tests/scientific-invariants.test.js
 python -m unittest tests/test_jatos_scripts.py
 python -m compileall -q scripts
 python scripts/build_study_assets.py
 ```
 
-已验证的 tests 覆盖 storage adapter 字段保真、JATOS append/end、实验参数、timing、K 公式、鼠标 mapping、probe-plan 科研不变量，以及当前/legacy JZIP identity parser。它们不等于真实 API/浏览器验收。
+已验证的 tests 覆盖 storage adapter 字段保真、JATOS append/end、实验参数、timing、K 公式、仅左键作答、probe-plan 科研不变量，以及当前/legacy JZIP identity parser。它们不等于真实 API/浏览器验收。
 
 ### 2. 检查构建产物
 
@@ -123,7 +124,7 @@ python scripts/build_study_assets.py --output build/study-assets
 
 检查：
 
-- `build-info.json` 的 `experiment_version`、`git_commit`、`entry=clt.html`、`response_mode=mouse`；
+- `build-info.json` 的 `experiment_version`、`git_commit`、`entry=exp1_clt.html`、`response_mode=mouse`；
 - `MANIFEST.sha256`；
 - 构建入口只加载 JATOS adapter；
 - JATOS assets 中没有 `.env`、token、Supabase secret 或 results。
@@ -134,19 +135,19 @@ python scripts/build_study_assets.py --output build/study-assets
 
 - Study title：`CLT-VWM Mouse`；
 - Component title：`CLT-VWM Mouse Experiment`；
-- Component HTML：`clt.html`；
+- Component HTML：`exp1_clt.html`；
 - assets：`build/study-assets/` 的内容。
 
 浏览器人工检查：
 
 - 首页、指导语和全部 assets 加载；
 - console 没有 task/storage critical error；
-- 练习和正式 trial、左右鼠标响应、block 休息和完成页正常；
+- 练习和正式 trial、鼠标左键响应、block 休息和完成页正常；
 - 设备端 XLSX 正常；
 - JATOS Results 中出现 append-only records，完成结果为 `FINISHED`；
 - 刷新/早退保留 partial data，但不自动恢复任务。
 
-本次完整 debug run 的期望是 26 条 NDJSON：1 session、20 trials、4 checkpoints、1 final。正式模式 trial 数不同，不能把 debug count 当成正式研究设计。
+2026-09 旧版完整 debug run 的历史结果是 26 条 NDJSON：1 session、20 trials、4 checkpoints、1 final。当前源码的调试结构与数据 schema 已变化，必须重新实测记录数；不能把旧版 debug count 当成当前验收值或正式研究设计。
 
 ## E. JATOS Study 创建与打包
 
@@ -154,7 +155,7 @@ python scripts/build_study_assets.py --output build/study-assets
 
 1. 构建 `build/study-assets/`；
 2. 在本地 JATOS 3.11.1 创建 Study 和一个 Component；
-3. Component entry 设置为 `clt.html`；
+3. Component entry 设置为 `exp1_clt.html`；
 4. 上传/复制构建资产并完成本地 smoke test；
 5. 使用 JATOS 自身的 Study Export 正规导出 `.jzip`；
 6. 将 JZIP 保存到 ignored 的 `release/build/`；
@@ -207,7 +208,7 @@ python scripts/jatos_deploy.py import `
 - 从 Study 主页面进入 `Study Links`，展开目标 Batch；
 - 测试阶段创建/复制合适的 Personal link；
 - 完成浏览器 smoke test；
-- 在 Results 中检查 state、record count、左右键和 final record；
+- 在 Results 中检查 state、record count、`studyDuration` / `studyDurationActual` 和 final record；
 - 记录部署时间与 build 对应 Git commit，不记录 token。
 
 本次使用 Personal Multiple test link。Default Batch 未启用 General Multiple；正式 participant-access 策略仍需人工确认。
@@ -287,11 +288,11 @@ python scripts/jatos_export_study.py `
 
 ### 构建后仍加载 Supabase 或 `jatos` 未初始化
 
-通常是把源 `clt.html` 直接作为 JATOS assets，而不是使用 `build/study-assets/clt.html`。检查构建入口是否加载 `jatos.js`、`jatos-storage.js` 和共享 facade。
+通常是把源 `exp1_clt.html` 直接作为 JATOS assets，而不是使用 `build/study-assets/exp1_clt.html`。检查构建入口是否加载 `jatos.js`、`jatos-storage.js` 和共享 facade。
 
 ### Asset 404 / 路径错误
 
-实验自有资源必须是相对路径。检查 Component HTML 是 `clt.html`，并在 Network 中核对 CSS、JS、storage 和 `vendor/xlsx.full.min.js`。不要写死 MindProbe 绝对 URL。
+实验自有资源必须是相对路径。检查 Component HTML 是 `exp1_clt.html`，并在 Network 中核对 CSS、JS、storage 和 `vendor/xlsx.full.min.js`。不要写死 MindProbe 绝对 URL。
 
 ### API 401/403
 
@@ -307,7 +308,7 @@ python scripts/jatos_export_study.py `
 
 ### Result 未写入或状态未完成
 
-检查 browser console、JATOS Study log、Results state 和 data size。正常 debug run 应为 26 records；中断运行可能停留在 `STARTED`/`DATA_RETRIEVED` 并保留 partial data，这不等于完成，也不授权删除。
+检查 browser console、JATOS Study log、Results state 和 data size。旧版正常 debug run 的历史结果为 26 records；当前源码必须重新实测，不能沿用该计数。中断运行可能停留在 `STARTED`/`DATA_RETRIEVED` 并保留 partial data，这不等于完成，也不授权删除。
 
 ### General Multiple 不可用
 

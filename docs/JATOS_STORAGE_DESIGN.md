@@ -10,9 +10,9 @@ saveFinalResult(payload)
 finishExperiment(status)
 ```
 
-`clt.html` remains the Supabase-compatible source entry. Its URL/key stay as placeholders and it therefore preserves the original local-XLSX-only behavior. `scripts/build_study_assets.py` generates a JATOS-specific `clt.html` that loads exactly `jatos.js`, `src/storage/jatos-storage.js`, and the shared storage facade. Both variants run the same mouse task code.
+`exp1_clt.html` remains the Supabase-compatible source entry. Its URL/key stay as placeholders and it therefore preserves the original local-XLSX-only behavior. `scripts/build_study_assets.py` generates a JATOS-specific `exp1_clt.html` that loads exactly `jatos.js`, `src/storage/jatos-storage.js`, and the shared storage facade. Both variants run the same mouse task code.
 
-JATOS result data is newline-delimited JSON and is appended through a serialized promise queue. Record types are `session_start`, one `trial` after each completed formal response, one `checkpoint` after each block, and one `final` record. Every record carries participant/session identifier, experiment version, Git commit, timestamp, JATOS identifiers, and the original mouse-trial fields. `responseKey` remains `left` or `right`.
+JATOS result data is newline-delimited JSON and is appended through a serialized promise queue. Record types are `session_start`, one `trial` after each completed formal response, one `checkpoint` after each block, and one `final` record. Every record carries participant/session identifier, experiment version, Git commit, timestamp, JATOS identifiers, and the current mouse-trial fields. Formal trial rows include planned `studyDuration` and measured `studyDurationActual`. Responses are left-click selections only, and the removed certainty field `responseKey` is no longer written.
 
 `jatos.appendResultData` is used because repeated `submitResultData` calls would overwrite earlier component data. No result file upload is needed. At normal completion the queue is flushed and `jatos.endStudyWithoutRedirect` ends the Study while preserving the experiment completion page.
 
