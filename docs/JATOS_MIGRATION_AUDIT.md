@@ -7,7 +7,7 @@
 - Migration branch: `migration/jatos-mindprobe`
 - Audit date: 2026-09-17
 
-This document describes the pre-migration mouse version. No scientific behavior was changed during the audit.
+This document describes the pre-migration mouse version. No scientific behavior was changed during the audit. Its 4/6-set-size, 250 ms, 140-trial, and left/right `responseKey` descriptions are historical baselines, not the current `2.0.0-jatos-m.1` design.
 
 ## 1. Entry HTML
 

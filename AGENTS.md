@@ -76,18 +76,22 @@
 
 ## Repository-specific checks
 
-修改前阅读相关基础文档；提交前至少运行：
+修改前阅读相关基础文档；`src/storage` 是共享存储模板子模块，克隆后先执行
+`git submodule update --init --recursive`。提交前至少运行：
 
 ```text
-node --check clt.js
+node --check exp1_clt.js
 node --check src/storage/index.js
 node --check src/storage/supabase-storage.js
 node --check src/storage/jatos-storage.js
-node --test tests/storage-adapters.test.js tests/scientific-invariants.test.js
+node --test src/storage/tests/storage-adapters.test.js tests/scientific-invariants.test.js
 python -m unittest tests/test_jatos_scripts.py
 python -m compileall -q scripts
 python scripts/build_study_assets.py
 ```
+
+存储层（`src/storage/`）**不要在实验仓库里改**：它是共享模板，改动要提交到
+`1019zita/jatos-storage-template` 并在这里推进子模块指针，否则下一个实验会继续用旧实现。
 
 不要直接编辑 `build/study-assets/`；它由 `scripts/build_study_assets.py` 生成。不要手工猜测或构造 JZIP 内部格式。
 

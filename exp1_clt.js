@@ -1,40 +1,52 @@
 // ============================================================
-// clt.js
+// exp1_clt.js
 // 变化定位任务 (Change Localization Task, CLT)
 // 基于 CLT.m (0630版) 实验规则
 //
 // 实验设计：
-//   2×1 设计：set size (4, 6)，所有试次均为 change trial
-//   SS4 和 SS6 各 70 trial，共 140 trial，均分到 4 个 block（每 block 35 trial）
-//   练习 10 trial（2 种 set size × 5）
+//   3×5 设计：set size (3, 4, 6) × 记忆阵列呈现时长 (50, 200, 500, 1000, 2000 ms)
+//   15 种条件各 30 trial，共 450 trial，整体随机后均分到 9 个 block（每 block 50 trial）
+//   练习 15 trial（3 种 set size × 5），每个试次随机分配一档呈现时长
 //
 // 试次结构：
-//   1. ITI              (500 ms)    显示注视点
-//   2. 学习阵列         (250 ms)    显示注视点
-//   3. 保留间隔         (1000 ms)   显示注视点（注视点全程固定显示，不消失）
-//   4. 测试阵列         (无时间限制) 显示注视点
+//   1. ITI              (500 ms)           显示注视点
+//   2. 学习阵列         (50～2000 ms)      显示注视点，时长由当前试次条件决定
+//   3. 保留间隔         (1000 ms)          显示注视点（注视点全程固定显示，不消失）
+//   4. 测试阵列         (无时间限制)        显示注视点
 //
 // Block 规则：
-//   4 个 block，每 block 35 trial；block 间强制休息至少 30 秒（含倒计时），
+//   9 个 block，每 block 50 trial；block 间强制休息至少 30 秒（含倒计时），
 //   倒计时结束后显示「您可以继续休息或按【SPACE】开始下一组实验」，按 SPACE 进入下一组
-//   不设「低正确率自动结束」：无论正确率高低，实验都完整跑完 4 个 block
-//   低正确率只做标记：set size = 4 的平均正确率低于 50% 时，
-//   在导出文件名最前面加 F（如 F20260910_1234567890.xlsx）
+//   不设「低正确率自动结束」：无论正确率高低，实验都完整跑完 9 个 block
+//   低正确率只做标记（详见下方「低正确率标记」段）
 //
 // 调试模式（被试信息四个输入框全部填 1，隐藏触发）：
-//   除每个 block 试次数 35 → 5（共 20 trial）外，其余流程与正式实验完全一致
-//   （练习 10 trial、block 间强制休息 ≥30 秒、数据保存等均不变）
-//   被试编号与随机种子固定为 1111，导出文件名固定为 1111.xlsx
+//   正式实验只运行 1 个 block、5 个 trial；练习仍为 15 trial，跳过 block 间休息
+//   被试编号与随机种子固定为 1111，导出文件名固定为 exp1_clt_1111.xlsx
+//
+// 低正确率标记（导出文件名前加 F，不改变实验流程）：
+//   判定条件：set size = 3 或 4 时，「呈现时长 ≥ 200 ms」试次的正确率低于 50%
+//   （set size 3 和 4 分别计算，任一低于 50% 即触发；set size = 6 不参与判定）
+//   触发的条件行会在 K 值表中以「LowAccRed = 1」标记（标红功能受 XLSX 版本所限，见下）
 //
 // 导出（Excel，3 个 sheet，调试模式与正式实验规则完全一致）：
-//   文件名：正式实验 = 实验日期_被试编号（YYYYMMDD_编号），
-//                      SS4 平均正确率 < 50% 时前面加 F；
-//           调试模式 = 1111.xlsx（固定，不加 F）
-//   Sheet1 被试信息：姓名 / 性别 / 年龄 / 身份证号 / 手机号
-//   Sheet2 实验数据：全部 trial 的 SetSize、正确/选择色块、鼠标判断、反应时、是否正确
-//   Sheet3 实验结果：SS4 / SS6 各自的 Acc、平均 RT（正确试次）、K
-//                   以及「低正确率标记」（SS4 平均正确率 < 50% 时为 1）
+//   文件名：实验名称_被试编号（exp1_clt_编号）；
+//           存在低正确率条件时在最前面加 F（如 Fexp1_clt_0112345678.xlsx）；
+//           调试模式不加 F（实验名称仍为 exp1_clt）
+//   Sheet1「Trial Data」：全部 trial，按实验实际发生顺序排列
+//                        （含计划呈现时长 studyDuration 与实测值 studyDurationActual）
+//   Sheet2「K Values」：按「set size × 呈现时长」拆分的 15 个条件各一行，
+//                      给出正确率、正确试次平均反应时与容量 K；
+//                      末尾再附每个 set size 的汇总行（StudyDuration 记为「汇总」）；
+//                      低正确率条件行以 LowAccRed = 1 标记（标红受 XLSX 版本限制）
+//   Sheet3「Grouped Trials」：列与 Sheet1 相同，但按「呈现时长 → set size」分组重排，
+//                            同一条件的试次在表中连续排列，便于逐条件核对原始数据
 //   K = (Acc * N^2 - N) / (N - 1)
+//
+// 标红能力说明：
+//   当前 vendor 内嵌的 SheetJS 0.18.5 不支持单元格样式写入，
+//   K 值表用「LowAccRed」列记录判定结果（1 = 应标红），将来升级 XLSX 或
+//   改用 ExcelJS 后 markKRowsRed() 会自动生效，调用方无需改动。
 //
 // 颜色规则（每个试次由 buildProbePlan 一次算好并冻结，drawPlanSquares 只按计划绘制）：
 //   记忆阵列：从 9 色调色板中不重复地随机取 setSize 个颜色
@@ -43,33 +55,37 @@
 //   计划生成后立即自检 verifyProbePlan()，违反则 console.error 报警（probePlanViolations）
 //   探测阵列直接使用记忆阵列那一份 plan，不会因重入/并发读到别的试次的数据
 //
-// 鼠标反应：直接点击探测阵列中的色块
-//   左键 = 确定；右键 = 不确定。两种点击都记录所选色块并计算正确率。
-//   只有点击落在色块范围内才算作反应；右键菜单在实验画布上被禁用。
+// 鼠标反应：只用鼠标左键直接点击探测阵列中的色块
+//   只有左键点击落在色块范围内才算作反应。
+//   实验画布仍禁用右键菜单，仅用于防止菜单遮挡刺激，与作答无关。
 //
 // 变化颜色规则：
 //   被选方块变为一个未在阵列中出现过的新颜色。
 // ============================================================
 
-// 运行版本标记（与 clt.html 中 clt.js?v= 保持一致）：
+// 实验名称：仅用于导出 Excel 的文件名前缀（exp1_clt_被试编号.xlsx）
+// 改名只需改这一处，文件名与结束页的手动下载链接会同步生效
+const EXPERIMENT_NAME = 'exp1_clt';
+
+// 运行版本标记（与 exp1_clt.html 中 exp1_clt.js?v= 保持一致）：
 // 用于确认浏览器实际加载的是最新代码，而非缓存里的旧版本
-const CLT_BUILD = '20260917mj1';
-console.log('[CLT] build ' + CLT_BUILD + ' loaded');
+const EXP1_CLT_BUILD = '20261011mj1';
+console.log('[exp1_clt] build ' + EXP1_CLT_BUILD + ' loaded');
 
 // 在设置页显示当前 build（确认浏览器加载的是最新代码，而非缓存中的旧版）
 (function showBuildTag() {
     const tag = document.getElementById('build-tag');
-    if (tag) tag.innerText = 'clt.js build ' + CLT_BUILD;
+    if (tag) tag.innerText = 'exp1_clt.js build ' + EXP1_CLT_BUILD;
 })();
 
-// 版本自检：页面（clt.html）与脚本（clt.js）版本号必须一致。
-// 不一致说明浏览器缓存了旧的 clt.js（实验会跑出旧规则、旧导出文件名），
+// 版本自检：页面（exp1_clt.html）与脚本（exp1_clt.js）版本号必须一致。
+// 不一致说明浏览器缓存了旧的 exp1_clt.js（实验会跑出旧规则、旧导出文件名），
 // 在设置页直接给出告警，避免又用旧代码跑一整轮实验。
 (function checkBuildMatch() {
-    const pageBuild = window.CLT_PAGE_BUILD;
-    if (pageBuild && pageBuild !== CLT_BUILD) {
-        console.warn('[CLT] 版本不一致：页面 ' + pageBuild + ' / 脚本 ' + CLT_BUILD +
-            ' —— 浏览器可能缓存了旧 clt.js，请 Ctrl+F5 强制刷新');
+    const pageBuild = window.EXP1_CLT_PAGE_BUILD;
+    if (pageBuild && pageBuild !== EXP1_CLT_BUILD) {
+        console.warn('[exp1_clt] 版本不一致：页面 ' + pageBuild + ' / 脚本 ' + EXP1_CLT_BUILD +
+            ' —— 浏览器可能缓存了旧 exp1_clt.js，请 Ctrl+F5 强制刷新');
         const el = document.getElementById('build-mismatch');
         if (el) el.classList.remove('hidden');
     }
@@ -83,21 +99,32 @@ let currentBlock = 1;
 let currentTrial = 0;
 let blockTrials = [];
 let experimentPhase = 'setup';
+
+// --- 断点续做：PRNG 基准与续做状态（2026-10-10，与 exp1_fcdt 结构一致）---
+// buildFormalTrials 每次都先把 PRNG 重置回正式试次基准起点，
+// 这样无论是否跳过练习，450 试次的顺序都完全一致。
+let formalPrngBaseSeed = 0;
+let isResumedSession = false;
+let resumedFromBlock = 0;   // 0 = 非续做；N = 从第 N 组（block）续做
+let resumeCount = 0;        // 本被试累计续做次数（第 1 次续做 = 1）
+// 续做起点：若检测到上次未完成的进度，从第 N 组（block）继续；首次（或重新开始）为 1。
+let resumeStartBlock = 1;
 let currentNItems = 4; // 当前试次的 set size，用于鼠标命中范围判断
 let lowAccBlockCount = 0;        // 正确率低于 50% 的 block 累计数（只统计，不终止实验）
 // 低正确率标记：set size = 4 的平均正确率低于 50% 时为 true，导出文件名最前面加 F。
-// 注意：实验本身不再因低正确率提前结束，永远跑完 4 个 block。
-let ss4LowAccuracyFlag = false;
+// 注意：实验本身不再因低正确率提前结束，永远跑完 9 个 block。
+let ss4LowAccuracyFlag = false;  // 实际语义：低正确率标记（SS3/SS4 在 ≥200ms 正确率 < 50%）
+let lowAccDetail = { triggered: false, details: [] };  // 各 set size 的判定明细，供 K 值表标红使用
 
 // --- 实验参数（对应 CLT.m getPreferences） ---
 const prefs = {
-    setSizes: [4, 6],
-    numBlocks: 4,
-    numTrials: 35,
-    nEachSS: 70,            // 每个 set size 70 trial
-    nPractice: 10,          // 练习 10 trial
+    setSizes: [3, 4, 6],
+    studyDurations: [50, 200, 500, 1000, 2000],
+    numBlocks: 9,
+    numTrials: 50,
+    nEachCondition: 30,      // 每个 set size × 呈现时长组合 30 trial
+    nPractice: 15,          // 练习 15 trial，3 种 set size 各 5 trial
     ITI: 500,               // ms
-    studyDuration: 250,     // ms（对应 MATLAB studyDuration）
     retentionInterval: 1000,// ms
     stimSize: 51,
     minDist: 51 * 2.5,
@@ -105,6 +132,11 @@ const prefs = {
     breakLength: 0.5,
     labelFontSize: 18
 };
+
+// 调试模式只缩短实际运行的正式实验；prefs 始终保留完整科研设计参数，便于自检。
+let runtimeNumBlocks = prefs.numBlocks;
+let runtimeNumTrials = prefs.numTrials;
+let runtimeBreakLength = prefs.breakLength;
 
 // --- 兼容旧版数据结构的内部标签映射 ---
 // 鼠标版不再绘制数字标签，但保留映射字段，便于旧表结构继续接收 response/correctResponse。
@@ -221,7 +253,7 @@ function buildSubjectID() {
     return '';
 }
 
-// 实验日期（YYYYMMDD），用于导出文件名「实验日期_被试编号」
+// 实验日期（YYYYMMDD），随数据一起保存；不再用于导出文件名
 function formatDateYYYYMMDD(d) {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -259,14 +291,14 @@ document.getElementById('start-btn').addEventListener('click', async () => {
     if (!generatedID) {
         // 身份证号不足 6 位或手机号不足 4 位时无法按规则生成编号，
         // 只能退回时间戳。明确告警，避免事后把「一串数字」误当成随机种子。
-        console.warn('[CLT] 被试编号无法按规则生成（身份证号需 ≥6 位、手机号需 ≥4 位），' +
+        console.warn('[exp1_clt] 被试编号无法按规则生成（身份证号需 ≥6 位、手机号需 ≥4 位），' +
             '已退回时间戳：' + p.subjectID);
     }
     // 随机种子：用字符串编号派生（Number 转换仅用于 PRNG 内部，不影响编号本身）
     const seedNum = Number(p.subjectID);
     p.rndSeed = Number.isFinite(seedNum) ? seedNum : Date.now();
     p.saveLocal = true; // 保存到本地始终开启（复选框已隐藏，网页端数据库 + 本地均保存）
-    p.expDate = formatDateYYYYMMDD(new Date()); // 实验日期（导出文件名用）
+    p.expDate = formatDateYYYYMMDD(new Date()); // 实验日期（随数据保存，不参与文件名）
 
     // 调试模式触发（复选框已隐藏）：姓名/年龄/身份证号/手机号 四个输入框全部填 1
     // （性别为下拉选择，不参与判定；subjectID 自动生成不受影响）
@@ -283,27 +315,33 @@ document.getElementById('start-btn').addEventListener('click', async () => {
     p.debugMode = checkDebugBox || (isAllOnes(p.subName) && isAllOnes(p.subAge)
         && isAllOnes(p.subIdCard) && isAllOnes(p.subPhone));
     if (p.debugMode) {
-        console.log('[CLT] 调试模式已触发（姓名/年龄/身份证号/手机号 全为 1）');
+        console.log('[exp1_clt] 调试模式已触发（姓名/年龄/身份证号/手机号 全为 1）');
     } else {
-        console.log(`[CLT] 正式模式（姓名="${p.subName}" 年龄="${p.subAge}" ` +
+        console.log(`[exp1_clt] 正式模式（姓名="${p.subName}" 年龄="${p.subAge}" ` +
             `身份证号长度=${String(p.subIdCard || '').length} 手机号="${p.subPhone}"）`);
     }
 
-    // 调试模式：练习、正式实验流程、block 间休息等全部与正式实验完全一致，
-    // 唯一差异是每个 block 的试次数由 35 降为 5（4 block × 5 = 20 trial，SS4/SS6 各 10）；
-    // 被试编号与随机种子一并固定为 1111（导出文件名也是 1111.xlsx），便于识别与复现
+    // 调试模式：练习仍使用完整的 15 个试次；正式实验缩短为 1 个 block × 5 trial，
+    // 并跳过 block 间休息。prefs 保留完整设计参数，避免调试设置干扰正式试次生成自检；
+    // 被试编号与随机种子一并固定为 1111（导出文件名为 exp1_clt_1111.xlsx），便于识别与复现。
+    runtimeNumBlocks = prefs.numBlocks;
+    runtimeNumTrials = prefs.numTrials;
+    runtimeBreakLength = prefs.breakLength;
     if (p.debugMode) {
-        prefs.numBlocks = 1;
-        prefs.numTrials = 5;
-        prefs.nEachSS = 5;
-        prefs.nPractice = 2;
-        prefs.breakLength = 0;
+        runtimeNumBlocks = 1;
+        runtimeNumTrials = 5;
+        runtimeBreakLength = 0;
         p.subjectID = '1111';
         p.rndSeed = 1111;
-        subjectIDInput.value = '1111'; // 设置页同步显示，与导出文件名一致
+        subjectIDInput.value = '1111'; // 设置页同步显示，与导出文件名中的被试编号一致
     }
 
     seedRandom(p.rndSeed);
+
+    // 正式试次序列使用专属 PRNG 种子，与练习阶段完全解耦（与 exp1_fcdt 一致）：
+    // 无论练习是否执行 / 跳过，buildFormalTrials 输出的试次顺序恒定，
+    // 续做时跳过练习直接从第 N 组继续，被试看到的 450 试次序列与首次完全一致。
+    formalPrngBaseSeed = p.rndSeed + 7919;
 
     try {
         if (document.documentElement.requestFullscreen) {
@@ -313,7 +351,11 @@ document.getElementById('start-btn').addEventListener('click', async () => {
 
     try {
         if (!storage) throw new Error('Storage adapter is unavailable');
-        await storage.initializeStorage({ participant: { ...p }, build: CLT_BUILD });
+        // experiment 决定 Batch Session 的进度键名（exp1_clt:<workerId>），
+        // 必须传，否则续做会退化成所有实验共用一个键
+        await storage.initializeStorage({
+            participant: { ...p }, build: EXP1_CLT_BUILD, experiment: EXPERIMENT_NAME
+        });
     } catch (err) {
         console.error('[CLT storage] initialization failed:', err);
         if (storage && storage.backendName === 'jatos') {
@@ -324,6 +366,49 @@ document.getElementById('start-btn').addEventListener('click', async () => {
 
     switchScreen('instructions');
     experimentPhase = 'instructions';
+
+    // 检查是否有可续做的进度（仅 JATOS Batch Session 后端提供；其它后端返回 null，
+    // 等价于"从头开始"，不影响正常流程）。续做从上次完成后的下一组继续，
+    // 试次序列因 PRNG 基准固定而与首次完全一致。
+    // 归属校验（这条进度是否属于当前被试）已在存储层完成：不属于、或无法校验时返回 null。
+    let resumable = null;
+    try {
+        resumable = await storage.loadProgress();
+    } catch (err) {
+        console.warn('[' + EXPERIMENT_NAME + '] 读取续做进度失败，将从头开始：', err);
+    }
+    if (resumable && resumable.completedBlocks > 0 && resumable.completedBlocks < runtimeNumBlocks) {
+        resumeStartBlock = resumable.completedBlocks + 1;
+        isResumedSession = true;
+        resumedFromBlock = resumeStartBlock;
+        // 本次续做计入累计次数：进度里记的是"此前续做过几次"，本次 +1 后再随进度
+        // 写回；导出时该被试的每一行都带同一数值（一次做完的被试为 0）
+        resumeCount = (resumable.resumeCount || 0) + 1;
+        console.log('[' + EXPERIMENT_NAME + '] 检测到未完成的进度（已完成 ' +
+            resumable.completedBlocks + ' 组），将从第 ' + resumeStartBlock + ' 组续做。');
+    }
+
+    // 检测到可续做进度时，显示"继续 / 重新开始"选择条；否则隐藏。
+    const resumeNotice = document.getElementById('resume-notice');
+    if (resumeNotice) {
+        if (resumeStartBlock > 1) resumeNotice.classList.remove('hidden');
+        else resumeNotice.classList.add('hidden');
+    }
+    const btnResume = document.getElementById('btn-resume');
+    if (btnResume) btnResume.addEventListener('click', () => {
+        resumeNotice.classList.add('hidden');
+        // 保持 resumeStartBlock 不变，指导语读完后 SPACE 键按续做起点分流
+    });
+    const btnRestart = document.getElementById('btn-restart');
+    if (btnRestart) btnRestart.addEventListener('click', () => {
+        resumeStartBlock = 1;
+        isResumedSession = false;
+        resumedFromBlock = 0;
+        resumeCount = 0;
+        if (storage) storage.clearProgress();
+        resumeNotice.classList.add('hidden');
+        console.log('[' + EXPERIMENT_NAME + '] 被试选择从头重新开始，已清除线上进度。');
+    });
 });
 
 function showSetupError(message) {
@@ -344,7 +429,10 @@ window.addEventListener('keydown', (e) => {
 
     if (experimentPhase === 'instructions' && (e.code === 'Space' || e.key === ' ')) {
         e.preventDefault();
-        startPractice();
+        // 续做（resumeStartBlock > 1）：被试已在首次做过练习，跳过直接进正式；
+        // 否则正常走练习 → 正式流程。
+        if (resumeStartBlock > 1) startFormal();
+        else startPractice();
     } else if (experimentPhase === 'practice_end' && (e.code === 'Space' || e.key === ' ')) {
         e.preventDefault();
         startFormal();
@@ -358,8 +446,159 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// 右键用于“不确定”作答，因此实验画布上禁用浏览器右键菜单。
-canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+// ============================================================
+//  防误触层（guard rails）
+//  目的：避免被试或浏览器在实验进行中触发以下操作导致实验中断 / 数据丢失：
+//   1) 浏览器刷新、关闭、离开（beforeunload）
+//   2) 浏览器后退 / 前进（Backspace、Alt+← / Alt+→、popstate）
+//   3) 快捷键被劫持（F5 / Ctrl+R / Ctrl+W / Ctrl+T / F12 / DevTools）
+//   4) Esc 退出全屏（屏蔽 Esc）
+//   5) 鼠标长按 → 系统右键菜单 / 拖拽（mousedown 持续触发、dragstart、selectstart）
+//   6) 触屏 / 滚轮 / 缩放（touchstart、wheel、gesturestart）
+//   7) 页面失焦 / 切到后台（visibilitychange 给出告警但不清空数据）
+//   8) 页面被 resize（仅在 #experiment-phase 锁住尺寸，避免破坏注视点位置）
+//  实验进行中：仅按每个阶段规定的"有效键"（SPACE / 鼠标左键）才生效；
+//  其他任何键 / 鼠标 / 触屏 / 系统事件一律被静默 preventDefault，实验流程不受影响。
+// ============================================================
+
+// 每个阶段被允许的键盘按键集合（其他键一律屏蔽）
+const ALLOWED_KEYS = new Set([' ', 'Space', 'Spacebar']);
+
+// 实验中需要拦截的系统级组合键（不拦截时浏览器会触发默认行为）
+const BLOCKED_SHORTCUTS = new Set([
+    'F5', 'F12',                                                  // 刷新 / 开发者工具
+    'F1', 'F2', 'F3', 'F4', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11' // 其他功能键
+]);
+function isBlockedShortcut(e) {
+    if (BLOCKED_SHORTCUTS.has(e.key)) return true;
+    if (e.ctrlKey || e.metaKey) {
+        // 拦截 Ctrl/Cmd + R / W / T / N / P / F / S / Shift+Delete 等
+        if (/^[rwnpfst]$/i.test(e.key)) return true;
+        if (e.key === 'F4' && e.altKey) return true;   // Alt+F4 关窗
+    }
+    if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Backspace')) {
+        return true;                                       // Alt+←/→ 浏览器后退 / 前进
+    }
+    return false;
+}
+
+// (1) 全局 keydown 第二层：仅放行 ALLOWED_KEYS，其余静默屏蔽
+window.addEventListener('keydown', (e) => {
+    if (e.repeat) return;                                 // 防止长按重复触发
+
+    // 关键例外：焦点落在输入框 / 下拉框里时（setup 阶段填姓名 / 性别 / 年龄 /
+    // 身份证 / 手机号），防误触层必须放行普通按键——在 capture 阶段对 keydown
+    // 调用 preventDefault() 会阻止字符被插入输入框，被试将一个字都打不进去。
+    const inFormField = (e.target instanceof HTMLInputElement)
+        || (e.target instanceof HTMLTextAreaElement)
+        || (e.target instanceof HTMLSelectElement);
+
+    if (isBlockedShortcut(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+    }
+    if (inFormField) return;                               // 表单输入：放行所有普通按键
+    if (e.key === 'Escape') {                              // 屏蔽 Esc 退出全屏
+        e.preventDefault();
+        return;
+    }
+    if (e.key === 'Backspace' && !(e.target instanceof HTMLInputElement)) {
+        // Backspace 在非输入框下被浏览器解读为"后退" → 屏蔽
+        e.preventDefault();
+        return;
+    }
+    // 其他所有非放行键：静默屏蔽
+    if (!ALLOWED_KEYS.has(e.key) && !ALLOWED_KEYS.has(e.code) && e.key !== 'Tab') {
+        e.preventDefault();
+    }
+}, true);                                                  // capture 阶段优先
+
+// (2) 屏蔽所有元素的右键菜单（不仅 canvas）
+//     实验阶段 canvas 上的右键必须屏蔽（菜单会遮挡刺激、干扰作答）；
+//     但 setup 阶段表单里的右键菜单保留（便于粘贴身份证号 / 手机号），
+//     文本输入框的右键菜单里没有任何导航项，不会导致实验中断。
+window.addEventListener('contextmenu', (e) => {
+    const t = e.target;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+    e.preventDefault();
+});
+
+// (3) 屏蔽拖拽 / 选中 / 复制（避免误选文字拖出浏览器）
+window.addEventListener('dragstart', (e) => e.preventDefault());
+window.addEventListener('selectstart', (e) => {
+    // 允许在 setup 阶段（输入框）选中文字；其他阶段屏蔽
+    const phase = experimentPhase;
+    if (phase !== 'setup' && phase !== 'instructions') {
+        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+            e.preventDefault();
+        }
+    }
+});
+window.addEventListener('copy', (e) => {
+    if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+    }
+});
+
+// (4) 屏蔽滚轮 / 触屏手势（避免页面缩放 / 滚动 / 系统菜单）
+window.addEventListener('wheel', (e) => {
+    if (e.ctrlKey) e.preventDefault();                    // Ctrl+滚轮 = 缩放
+}, { passive: false });
+window.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) e.preventDefault();         // 多指 = 缩放手势
+}, { passive: false });
+window.addEventListener('gesturestart', (e) => e.preventDefault());
+
+// (5) 屏蔽全屏切换 / 重新加载（beforeunload）：实验进行中给出离开提示
+window.addEventListener('beforeunload', (e) => {
+    const phase = experimentPhase;
+    if (phase === 'setup' || phase === 'finished') return;  // 未开始 / 已结束：允许直接离开
+    e.preventDefault();
+    e.returnValue = '实验正在进行中，关闭或刷新页面将导致数据丢失。确定要离开吗？';
+    return e.returnValue;
+});
+
+// (6) 页面失焦 / 切到后台：给出告警，但**不**清空数据、不终止试次
+let visibilityWarned = false;
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden && !visibilityWarned) {
+        visibilityWarned = true;
+        console.warn('[' + EXPERIMENT_NAME + '] 页面失焦：被试切到其他窗口 / 标签页。');
+    } else if (!document.hidden) {
+        visibilityWarned = false;
+    }
+});
+window.addEventListener('blur', () => {
+    if (experimentPhase === 'trial_response' || experimentPhase === 'practice_response') {
+        console.warn('[' + EXPERIMENT_NAME + '] 实验进行中窗口失焦，请保持页面在前台。');
+    }
+});
+
+// (7) popstate（浏览器后退 / 前进）：压入 dummy 历史项并屏蔽后退
+history.pushState({ phase: 'experiment' }, '');
+window.addEventListener('popstate', () => {
+    const phase = experimentPhase;
+    if (phase !== 'setup' && phase !== 'finished') {
+        // 实验进行中：阻止后退，立即推回一项
+        history.pushState({ phase: 'experiment' }, '');
+        console.warn('[' + EXPERIMENT_NAME + '] 浏览器后退被屏蔽（实验进行中）。');
+    }
+});
+
+// (8) 屏蔽浏览器对鼠标的默认处理（防止长按出系统菜单、拖拽光标、指针变化）。
+//     mousedown 一次按下只触发一次，浏览器在按住期间不会自动 repeat mousedown；
+//     右键菜单已由 (2) contextmenu preventDefault 屏蔽；
+//     这里额外阻止 mousedown 的默认光标变化 / 文本选中，并屏蔽 canvas dragstart。
+canvas.addEventListener('mousedown', (e) => {
+    // 在所有阶段都阻止默认行为（除 setup 阶段输入框，但 canvas 不在输入框里）
+    e.preventDefault();
+}, true);
+canvas.addEventListener('dragstart', (e) => e.preventDefault());
+canvas.addEventListener('drag', (e) => e.preventDefault());
+
+// 与作答无关，仅为防止浏览器右键菜单遮挡刺激。
+// （已由上面的 (2) 全局 contextmenu 屏蔽；这里保留 canvas 上的显式监听便于阅读）
 
 // 把鼠标坐标换算到 canvas 坐标，并判断点击落在哪个色块上。
 function clickedItemIndex(e) {
@@ -379,7 +618,7 @@ function clickedItemIndex(e) {
 canvas.addEventListener('mousedown', (e) => {
     const phase = experimentPhase;
     if (phase !== 'practice_response' && phase !== 'trial_response') return;
-    if (e.button !== 0 && e.button !== 2) return;
+    if (e.button !== 0) return;
     e.preventDefault();
 
     const itemIdx = clickedItemIndex(e);
@@ -389,14 +628,13 @@ canvas.addEventListener('mousedown', (e) => {
     // 实际选择的是 itemIdx 对应的色块，导出时再转换为 1 起始的色块序号。
     const mappedSlot = labelMap.indexOf(itemIdx);
     const responseNum = mappedSlot >= 0 ? mappedSlot + 1 : itemIdx + 1;
-    const mouseButton = e.button === 0 ? 'left' : 'right';
 
-    if (phase === 'practice_response') recordPracticeResponse(responseNum, mouseButton);
-    else recordResponse(responseNum, mouseButton);
+    if (phase === 'practice_response') recordPracticeResponse(responseNum);
+    else recordResponse(responseNum);
 });
 
 // ============================================================
-//  练习阶段（20 trial，2 种 set size × 10，全部 change）
+//  练习阶段（15 trial，3 种 set size × 5，呈现时长逐试次随机，全部 change）
 // ============================================================
 let practiceTrials = [];
 let practiceTrialIdx = 0;
@@ -406,11 +644,16 @@ function startPractice() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    let nPerSzPractice = prefs.nPractice / prefs.setSizes.length;
+    const nPerSzPractice = prefs.nPractice / prefs.setSizes.length;
     practiceTrials = [];
     for (let ss of prefs.setSizes) {
         for (let i = 0; i < nPerSzPractice; i++) {
-            practiceTrials.push({ setSize: ss, change: 1 }); // CLT 全部 change
+            const durationIdx = randInt(0, prefs.studyDurations.length - 1);
+            practiceTrials.push({
+                setSize: ss,
+                studyDuration: prefs.studyDurations[durationIdx],
+                change: 1
+            }); // CLT 全部 change
         }
     }
     shuffleArray(practiceTrials);
@@ -457,7 +700,7 @@ function verifyProbePlan(plan) {
     const ok = onlyOneChanged && newColorNotInMemory && colorReallyChanged && noDupInMemory;
     if (!ok) {
         probePlanViolations++;
-        console.error('[CLT] 探测阵列自检未通过（不应发生）：', {
+        console.error('[exp1_clt] 探测阵列自检未通过（不应发生）：', {
             diff: diff, memColors: plan.memColors, probeColors: plan.probeColors,
             changeIdx: plan.changeIdx, setSize: plan.setSize, violations: probePlanViolations
         });
@@ -550,8 +793,11 @@ async function runPracticeTrial() {
     let condition = practiceTrials[practiceTrialIdx];
     currentNItems = condition.setSize;
     practiceTrialData = {
-        block: 0, trial: practiceTrialIdx + 1,
-        setSize: condition.setSize, isChange: 1
+        block: 0,
+        trial: practiceTrialIdx + 1,
+        setSize: condition.setSize,
+        studyDuration: condition.studyDuration,
+        isChange: 1
     };
 
     // ITI
@@ -571,7 +817,9 @@ async function showStudyArrayPractice(condition) {
     // 学习阵列（仅方块，无标签）
     drawBackground(); drawFixation();
     drawPlanSquares(plan, plan.memColors);
-    await wait(prefs.studyDuration);
+    const studyStartTime = performance.now();
+    await wait(condition.studyDuration);
+    practiceTrialData.studyDurationActual = (performance.now() - studyStartTime).toFixed(2);
 
     // 保留间隔（注视点全程固定显示，不消失）
     drawBackground(); drawFixation();
@@ -592,7 +840,7 @@ function showTestArrayPractice(plan) {
     responseStartTime = performance.now();
 }
 
-function recordPracticeResponse(responseNum, mouseButton) {
+function recordPracticeResponse(responseNum) {
     // 立即锁定反应阶段：防止鼠标连击在同一试次内触发第二次响应
     if (experimentPhase !== 'practice_response') return;
     experimentPhase = 'practice_locked';
@@ -601,7 +849,6 @@ function recordPracticeResponse(responseNum, mouseButton) {
     let rt = (performance.now() - responseStartTime) / 1000;
     practiceTrialData.rt = rt;
     practiceTrialData.response = responseNum;          // 兼容旧数据的标签槽编号（1..nItems）
-    practiceTrialData.responseKey = mouseButton;       // left=确定，right=不确定
     practiceTrialData.correctResponse = correctLabel;
     practiceTrialData.changeItem = changeItemIdx;
     practiceTrialData.origColorIdx = activeColors[changeItemIdx];
@@ -639,26 +886,76 @@ function endPractice() {
 // ============================================================
 //  正式实验阶段
 // ============================================================
-function startFormal() {
-    // 预生成 140 trial（SS4×70 + SS6×70，随机顺序），全部 change
-    let allSS = [];
-    let nEachSS = prefs.nEachSS;
+// 生成完整正式试次序列：15 种条件各 30 次，整体只洗牌一次。
+// 关键不变量（与 exp1_fcdt 一致）：函数开头把 PRNG 重置回 formalPrngBaseSeed，
+// 因此"跳过练习直接续做"与"正常做完练习再进正式"得到的 450 试次序列完全相同。
+// 若正式基准起点尚未捕获（formalPrngBaseSeed 为 0），退回用 p.rndSeed 作为起点；
+// p.rndSeed 未设置时（如测试沙箱直接调用 buildFormalTrials）再用 Date.now() 兜底，
+// 避免 seedRandom(undefined) 污染 PRNG 状态导致 shuffle 无位移。
+function buildFormalTrials() {
+    const baseSeed = formalPrngBaseSeed !== 0 ? formalPrngBaseSeed : (p.rndSeed || Date.now());
+    seedRandom(baseSeed);
+    const trials = [];
     for (let ss of prefs.setSizes) {
-        for (let i = 0; i < nEachSS; i++) allSS.push(ss);
-    }
-    shuffleArray(allSS);
-
-    allFormalTrials = [];
-    for (let b = 0; b < prefs.numBlocks; b++) {
-        for (let t = 0; t < prefs.numTrials; t++) {
-            let idx = b * prefs.numTrials + t;
-            if (idx < allSS.length) {
-                allFormalTrials.push({ setSize: allSS[idx], change: 1 });
+        for (let duration of prefs.studyDurations) {
+            for (let i = 0; i < prefs.nEachCondition; i++) {
+                trials.push({ setSize: ss, studyDuration: duration, change: 1 });
             }
         }
     }
+    shuffleArray(trials);
+    return trials;
+}
 
-    currentBlock = 1;
+// 生成后自检：总数、各条件计数和按 50 个切分的 block 结构都必须符合设计。
+function verifyFormalTrials(trials) {
+    const expectedTotal = prefs.setSizes.length * prefs.studyDurations.length * prefs.nEachCondition;
+    const conditionCounts = new Map();
+    for (let trial of trials) {
+        const key = trial.setSize + '|' + trial.studyDuration;
+        conditionCounts.set(key, (conditionCounts.get(key) || 0) + 1);
+    }
+
+    let conditionsValid = true;
+    for (let ss of prefs.setSizes) {
+        for (let duration of prefs.studyDurations) {
+            const key = ss + '|' + duration;
+            if (conditionCounts.get(key) !== prefs.nEachCondition) conditionsValid = false;
+        }
+    }
+
+    const blocks = [];
+    for (let start = 0; start < trials.length; start += prefs.numTrials) {
+        blocks.push(trials.slice(start, start + prefs.numTrials));
+    }
+    const blocksValid = blocks.length === prefs.numBlocks &&
+        blocks.every(block => block.length === prefs.numTrials);
+    const valid = trials.length === expectedTotal && conditionsValid && blocksValid;
+
+    if (!valid) {
+        console.error('[exp1_clt] 正式试次生成自检未通过（不应发生）：', {
+            total: trials.length,
+            expectedTotal: expectedTotal,
+            conditionCounts: Object.fromEntries(conditionCounts),
+            blockSizes: blocks.map(block => block.length),
+            expectedBlocks: prefs.numBlocks,
+            expectedTrialsPerBlock: prefs.numTrials
+        });
+    } else {
+        console.log('[exp1_clt] 正式试次生成自检通过：15 种条件各 30 次，共 450 次，9 个 block × 50 次');
+    }
+    return valid;
+}
+
+function startFormal() {
+    allFormalTrials = buildFormalTrials();
+    verifyFormalTrials(allFormalTrials);
+
+    // 续做：跳过练习、从上次完成后的下一组开始；否则正常从第 1 组开始。
+    currentBlock = Math.min(resumeStartBlock, runtimeNumBlocks);
+    if (currentBlock > 1) {
+        console.log('[' + EXPERIMENT_NAME + '] 从第 ' + currentBlock + ' 组续做（上次已完成 ' + (currentBlock - 1) + ' 组）');
+    }
     startBlock();
 }
 
@@ -667,11 +964,11 @@ let formalTrialGlobalIdx = 0;
 
 function startBlock() {
     blockTrials = allFormalTrials.slice(
-        (currentBlock - 1) * prefs.numTrials,
-        currentBlock * prefs.numTrials
+        (currentBlock - 1) * runtimeNumTrials,
+        currentBlock * runtimeNumTrials
     );
     currentTrial = 0;
-    formalTrialGlobalIdx = (currentBlock - 1) * prefs.numTrials;
+    formalTrialGlobalIdx = (currentBlock - 1) * runtimeNumTrials;
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -694,8 +991,9 @@ async function runTrial() {
         block: currentBlock,
         trial: currentTrial + 1,
         setSize: condition.setSize,
+        studyDuration: condition.studyDuration,
         isChange: 1,
-        experimentType: 'CLT'
+        experimentType: EXPERIMENT_NAME
     };
 
     // ITI
@@ -718,7 +1016,9 @@ async function showStudyArray(condition) {
     // 学习阵列（仅方块，无标签）
     drawBackground(); drawFixation();
     drawPlanSquares(plan, plan.memColors);
-    await wait(prefs.studyDuration);
+    const studyStartTime = performance.now();
+    await wait(condition.studyDuration);
+    trialData.studyDurationActual = (performance.now() - studyStartTime).toFixed(2);
 
     // 保留间隔（注视点全程固定显示，不消失）
     drawBackground(); drawFixation();
@@ -747,7 +1047,7 @@ function showTestArray(plan) {
     responseStartTime = performance.now();
 }
 
-function recordResponse(responseNum, mouseButton) {
+function recordResponse(responseNum) {
     // 立即锁定反应阶段：防止鼠标连击在同一试次内触发第二次响应
     if (experimentPhase !== 'trial_response') return;
     experimentPhase = 'trial_locked';
@@ -756,7 +1056,6 @@ function recordResponse(responseNum, mouseButton) {
     let rt = (performance.now() - responseStartTime) / 1000;
     trialData.rt = rt;
     trialData.response = responseNum;                  // 兼容旧数据的标签槽编号（1..nItems）
-    trialData.responseKey = mouseButton;               // left=确定，right=不确定
     trialData.accuracy = (responseNum === correctLabel) ? 1 : 0;
 
     const completedTrial = Object.assign({}, trialData);
@@ -786,18 +1085,31 @@ function blockAccuracyPct(blockNo) {
     return Math.round(rows.reduce((s, d) => s + d.accuracy, 0) / rows.length * 100);
 }
 
-// set size = 4 的平均正确率（%）；没有 SS4 数据时返回 null
-function ss4AccuracyPct() {
-    const rows = stimData.filter(d => d.setSize === 4);
-    if (rows.length === 0) return null;
-    return rows.reduce((s, d) => s + d.accuracy, 0) / rows.length * 100;
-}
+// 低正确率判定（决定文件名是否加 F，也在 K 值表中标红对应行）：
+// 对 set size = 3 和 4 分别统计「呈现时长 ≥ 200 ms」试次的正确率，
+// 任一个低于 50% 即触发；set size = 6 不参与判定。
+// 返回 { triggered, details: [{ setSize, accuracyPct, low, nTotal }] }；
+// 数据不足时 triggered 为 false（details 中 nTotal 记 0），调用方据此不触发
+const LOW_ACC_MIN_DURATION_MS = 200;   // 低正确率判定只看呈现时长 ≥ 200 ms 的试次
+const LOW_ACC_MIN_SET_SIZE = 4;        // 判定只覆盖 set size 3 和 4（不超过 4）
+const LOW_ACC_THRESHOLD_PCT = 50;      // 正确率低于 50% 触发
 
-// 低正确率标记：set size = 4 的平均正确率低于 50%
-// 只影响导出文件名（前面加 F），不改变实验流程
 function computeLowAccuracyFlag() {
-    const acc = ss4AccuracyPct();
-    return acc !== null && acc < 50;
+    const details = [];
+    for (const ss of [3, 4]) {
+        const rows = stimData.filter(
+            d => d.setSize === ss && Number(d.studyDuration) >= LOW_ACC_MIN_DURATION_MS
+        );
+        const n = rows.length;
+        const accPct = n > 0 ? rows.reduce((s, d) => s + d.accuracy, 0) / n * 100 : 0;
+        details.push({
+            setSize: ss,
+            accuracyPct: n > 0 ? accPct : null,
+            nTotal: n,
+            low: n > 0 ? accPct < LOW_ACC_THRESHOLD_PCT : false
+        });
+    }
+    return { triggered: details.some(d => d.low), details: details };
 }
 
 function endBlock() {
@@ -805,7 +1117,7 @@ function endBlock() {
 
     // 只统计正确率低于 50% 的 block 数量（写入结果表备查）。
     // 已取消「累计 2 个 block 低于 50% 自动结束实验」的规则：
-    // 无论正确率高低，实验都完整跑完 4 个 block，低正确率只在导出文件名上加 F。
+    // 无论正确率高低，实验都完整跑完预定 block，低正确率只在导出文件名上加 F。
     if (blockAcc < 50) lowAccBlockCount++;
 
     if (storage) {
@@ -814,13 +1126,23 @@ function endBlock() {
             block: currentBlock,
             blockAccuracy: blockAcc,
             completedTrials: stimData.length,
-            nextBlock: currentBlock < prefs.numBlocks ? currentBlock + 1 : null
+            nextBlock: currentBlock < runtimeNumBlocks ? currentBlock + 1 : null
         }).catch(error => {
             console.error('[CLT storage] checkpoint save failed:', error);
         });
+
+        // 线上暂存：每完成一个 block 把进度写进 JATOS Batch Session（仅 JATOS 后端实现）。
+        // 只存"完成到第几组"；身份哈希由存储层自己注入，这里不传任何个人信息。
+        if (currentBlock < runtimeNumBlocks) {
+            storage.saveProgress({
+                completedBlocks: currentBlock,
+                resumeCount: isResumedSession ? resumeCount : 0,
+                updatedAt: new Date().toISOString()
+            });
+        }
     }
 
-    if (currentBlock < prefs.numBlocks) {
+    if (currentBlock < runtimeNumBlocks) {
         showBreakScreen(blockAcc);
     } else {
         finishExperiment();
@@ -841,7 +1163,7 @@ function startBreakCountdown() {
 
     const cdEl = document.getElementById('rest-countdown');
     const waitEl = document.getElementById('rest-wait');
-    let timeLeft = Math.max(BREAK_MIN_SECONDS, Math.round(prefs.breakLength * 60));
+    let timeLeft = Math.max(BREAK_MIN_SECONDS, Math.round(runtimeBreakLength * 60));
 
     experimentPhase = 'break_countdown';
     cdEl.innerText = timeLeft;
@@ -889,7 +1211,12 @@ function prepareStorageRow(row) {
         subIdCard: maskIdCard(p.subIdCard),
         subPhone: p.subPhone,
         subjectID: p.subjectID,
-        rndSeed: p.rndSeed
+        rndSeed: p.rndSeed,
+        // 断点续做标记（append-only，不改现有字段语义；与 exp1_fcdt 一致）：
+        //   resumedFromBlock = 本次从第几组续做（0 表示非续做，从头开始）
+        //   resumeCount      = 该被试历史上第几次续做（未续做 = 0，第 1 次续做 = 1）
+        resumedFromBlock: isResumedSession ? resumedFromBlock : 0,
+        resumeCount: isResumedSession ? resumeCount : 0
     };
 }
 
@@ -916,6 +1243,8 @@ async function finishExperiment() {
             });
             uploadMsg += saveResult && saveResult.message ? saveResult.message : '数据保存成功。';
             await storage.finishExperiment({ successful: true, message: 'CLT mouse completed' });
+            // 实验正常完成：清掉 Batch Session 里的进度，避免下次误判为"上次没做完"
+            await storage.clearProgress();
         } catch (error) {
             console.error('[CLT storage] final save failed:', error);
             uploadFailed = true;
@@ -935,7 +1264,7 @@ async function finishExperiment() {
             downloadXLSX();
             uploadMsg += "本地 Excel 已生成下载。";
         } catch (e) {
-            console.error('[CLT] 本地导出失败:', e);
+            console.error('[exp1_clt] 本地导出失败:', e);
             uploadFailed = true;
             uploadMsg += "本地 Excel 导出失败：" + e.message + "。";
         }
@@ -964,11 +1293,136 @@ async function finishExperiment() {
     } catch (e) {}
 }
 
-function downloadXLSX() {
-    const p = payload.subjectInfo || {};
+// ============================================================
+//  给 K 值表的「低正确率条件行」标红
+//  逐单元格写 style（font color: #C00000 深红），避免整行高亮被
+//  部分查看器误判为「整行脏数据」。
+//
+//  当前 vendor 内嵌的 SheetJS 0.18.5 不支持单元格样式写入，
+//  此函数在 0.18.5 下是 no-op（函数开头的 canStyle 检查会直接 return）。
+//  K 值表里仍写有「LowAccRed」列记录判定结果（1 = 应标红），
+//  将来升级 XLSX 到 0.19+ 或改用 ExcelJS 时本函数会自动生效，
+//  调用方（downloadXLSX 内的一行调用）无需改动。
+// ============================================================
+function markKRowsRed(sheet) {
+    // 0.18.5 没有样式能力：不写 cell.s，避免污染数据
+    const canStyle = false; // XLSX.utils.sheetStyles 在 0.18.5 下 undefined
+    if (!canStyle) return;
 
-    // 计算 SS4 低正确率标记
-    ss4LowAccuracyFlag = computeLowAccuracyFlag();
+    const range = XLSX.utils.decode_range(sheet['!ref']);
+    // 找 LowAccRed 列与 K 列的相对索引
+    const headers = [];
+    for (let c = range.s.c; c <= range.e.c; c++) {
+        const cell = sheet[XLSX.utils.encode_cell({ r: 0, c: c })];
+        headers[c] = cell && cell.v !== undefined ? String(cell.v) : '';
+    }
+    const redCol = headers.indexOf('LowAccRed');
+    const kCol = headers.indexOf('K');
+    if (redCol === -1) return;
+
+    for (let r = 1; r <= range.e.r; r++) {
+        const flagCell = sheet[XLSX.utils.encode_cell({ r: r, c: redCol })];
+        const isLow = flagCell && Number(flagCell.v) === 1;
+        if (!isLow) continue;
+        // K 值为负的条件行排除（避免把 50ms 拉低正确率导致的负 K 误判为「低正确率」）
+        if (kCol !== -1) {
+            const kCell = sheet[XLSX.utils.encode_cell({ r: r, c: kCol })];
+            if (kCell && Number(kCell.v) < 0) continue;
+        }
+        // 整行标红
+        for (let c = range.s.c; c <= range.e.c; c++) {
+            const addr = XLSX.utils.encode_cell({ r: r, c: c });
+            if (sheet[addr] && sheet[addr].t !== 'z') {
+                sheet[addr].s = { font: { color: { rgb: 'C00000' } } };
+            }
+        }
+    }
+}
+
+// ============================================================
+//  统计一组试次的结果行：总数 / 正确数 / 正确率 / 正确试次平均反应时 / 容量 K
+//  durationLabel：该组对应的呈现时长（ms）；传「汇总」表示跨全部时长
+//  K = (Acc * N^2 - N) / (N - 1)，Acc 为 0–1 小数
+// ============================================================
+function buildKRow(ss, durationLabel, rows) {
+    const nTotal = rows.length;
+    const nCorrect = rows.filter(d => d.accuracy === 1).length;
+    const acc = nTotal > 0 ? nCorrect / nTotal : 0;
+
+    const correctRTs = rows.filter(d => d.accuracy === 1 && typeof d.rt === 'number').map(d => d.rt);
+    const rtMean = correctRTs.length > 0
+        ? correctRTs.reduce((s, v) => s + v, 0) / correctRTs.length
+        : '';
+
+    const N = ss;
+    const K = N > 1 ? (acc * N * N - N) / (N - 1) : '';
+
+    // 低正确率标红：仅针对「set size ≤ 4 且 呈现时长 ≥ 200 ms」的明细条件行，
+    // 且该 set size 在低正确率判定中确实触发了（≥200ms 试次正确率 < 50%）。
+    // 汇总行（durationLabel === '汇总'）与 K 为负的条件行都不标红，避免把时长效应混入。
+    const isDetailRow = durationLabel !== '汇总' && Number(durationLabel) >= LOW_ACC_MIN_DURATION_MS;
+    const setSizeInRule = ss <= LOW_ACC_MIN_SET_SIZE;
+    const ssDetail = lowAccDetail.details.find(d => d.setSize === ss);
+    const lowAccRed = !!(isDetailRow && setSizeInRule && ssDetail && ssDetail.low && ss4LowAccuracyFlag);
+
+    return {
+        SubjectID: p.subjectID,
+        ExperimentType: EXPERIMENT_NAME,
+        SetSize: ss,
+        StudyDuration: durationLabel,
+        TotalTrials: nTotal,
+        CorrectTrials: nCorrect,
+        Accuracy: acc.toFixed(4),
+        MeanRT: rtMean === '' ? '' : rtMean.toFixed(4),
+        K: typeof K === 'number' ? K.toFixed(4) : '',
+        LowAccFlag: ss4LowAccuracyFlag ? 1 : 0,
+        LowAccRed: lowAccRed ? 1 : 0,
+        LowAccBlockCount: lowAccBlockCount
+    };
+}
+
+// ============================================================
+//  按「呈现时长 × set size」分组重排试次
+//  分组顺序：呈现时长升序 → set size 升序；组内保持原始实验顺序（不再排序）
+//  行首附加 GroupIndex（分组序号，1 起）与 GroupLabel（如 50ms-SS3）两列
+//  末尾兜底追加无法归类的行，确保不丢数据
+// ============================================================
+function groupTrialsByCondition(rows) {
+    const durations = prefs.studyDurations.slice().sort((a, b) => a - b);
+    const setSizes = prefs.setSizes.slice().sort((a, b) => a - b);
+
+    const grouped = [];
+    const placed = new Set();
+    let groupIndex = 0;
+
+    for (const duration of durations) {
+        for (const ss of setSizes) {
+            groupIndex++;
+            const groupLabel = duration + 'ms-SS' + ss;
+            for (const d of rows) {
+                // 用 Number() 比较：字段恒为数字，但避免个别行被写成字符串时漏掉
+                if (Number(d.studyDuration) === duration && Number(d.setSize) === ss) {
+                    grouped.push(Object.assign({ GroupIndex: groupIndex, GroupLabel: groupLabel }, d));
+                    placed.add(d);
+                }
+            }
+        }
+    }
+
+    // 兜底：条件无法归类的行（正常不应发生）追加在末尾，避免静默丢数据
+    for (const d of rows) {
+        if (!placed.has(d)) {
+            grouped.push(Object.assign({ GroupIndex: 0, GroupLabel: '未归类' }, d));
+        }
+    }
+    return grouped;
+}
+
+function downloadXLSX() {
+    // 计算低正确率标记（SS3/SS4 在 ≥200ms 正确率 < 50%）
+    const lowAccResult = computeLowAccuracyFlag();
+    ss4LowAccuracyFlag = lowAccResult.triggered;
+    lowAccDetail = lowAccResult;
 
     // ============================================================
     //  Sheet 1: Trial Data（对齐 CDT 风格，包含全部试次及被试人口统计学字段）
@@ -976,53 +1430,49 @@ function downloadXLSX() {
     const trialSheet = XLSX.utils.json_to_sheet(stimData);
 
     // ============================================================
-    //  Sheet 2: K Values（对齐 CDT 风格，按 set size 汇总正确率、反应时与容量 K）
+    //  Sheet 2: K Values（对齐 CDT 风格）
+    //  呈现时长是本实验的自变量，因此不再只按 set size 汇总，
+    //  而是每个 (set size × 呈现时长) 组合单独统计一行，共 15 行；
+    //  末尾再补每个 set size 的跨时长汇总行，便于与旧版口径对照。
     //  CLT 公式: K = (Acc * N^2 - N) / (N - 1)
     // ============================================================
     const kData = [];
+    const sortedDurations = prefs.studyDurations.slice().sort((a, b) => a - b);
+    for (let ss of prefs.setSizes) {
+        for (let duration of sortedDurations) {
+            const rows = stimData.filter(d => d.setSize === ss && Number(d.studyDuration) === duration);
+            kData.push(buildKRow(ss, duration, rows));
+        }
+    }
+    // 每个 set size 的汇总行（跨全部呈现时长，StudyDuration 记为「汇总」）
     for (let ss of prefs.setSizes) {
         const rows = stimData.filter(d => d.setSize === ss);
-        const nTotal = rows.length;
-        const nCorrect = rows.filter(d => d.accuracy === 1).length;
-        const acc = nTotal > 0 ? nCorrect / nTotal : 0;
-
-        const correctRTs = rows.filter(d => d.accuracy === 1 && typeof d.rt === 'number').map(d => d.rt);
-        const rtMean = correctRTs.length > 0
-            ? correctRTs.reduce((s, v) => s + v, 0) / correctRTs.length
-            : '';
-
-        const N = ss;
-        const K = N > 1 ? (acc * N * N - N) / (N - 1) : '';
-
-        kData.push({
-            SubjectID: p.subjectID,
-            ExperimentType: 'CLT-VWM-Mouse',
-            SetSize: ss,
-            TotalTrials: nTotal,
-            CorrectTrials: nCorrect,
-            Accuracy: acc.toFixed(4),
-            MeanRT: rtMean === '' ? '' : rtMean.toFixed(4),
-            K: typeof K === 'number' ? K.toFixed(4) : '',
-            LowAccFlag: ss4LowAccuracyFlag ? 1 : 0,
-            LowAccBlockCount: lowAccBlockCount
-        });
+        kData.push(buildKRow(ss, '汇总', rows));
     }
     const kSheet = XLSX.utils.json_to_sheet(kData);
+    // 标红低正确率条件行（XLSX 0.18.5 无样式能力时为 no-op，见函数注释）
+    markKRowsRed(kSheet);
+
+    // ============================================================
+    //  Sheet 3: Grouped Trials
+    //  列与 Sheet1 完全相同（前面多 GroupIndex / GroupLabel 两列标识分组），
+    //  但按「呈现时长 → set size」分组重排：同一条件的试次在表中连续排列，
+    //  组内仍保持原始实验顺序，不做二次排序。
+    // ============================================================
+    const groupedSheet = XLSX.utils.json_to_sheet(groupTrialsByCondition(stimData));
 
     // === 生成 Excel 文件 ===
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, trialSheet, 'Trial Data');
     XLSX.utils.book_append_sheet(wb, kSheet, 'K Values');
+    XLSX.utils.book_append_sheet(wb, groupedSheet, 'Grouped Trials');
 
-    let fileName;
-    if (p.debugMode) {
-        fileName = p.subjectID + "_CLT_Mouse.xlsx";
-    } else {
-        const dateStr = p.expDate || formatDateYYYYMMDD(new Date());
-        const filePrefix = ss4LowAccuracyFlag ? 'F' : '';
-        fileName = (filePrefix || "") + (dateStr || "") + "_" + p.subjectID + "_CLT_Mouse.xlsx";
-    }
-    console.log(`[CLT] 导出模式= 被试编号= 文件名=`);
+    // 文件名规则：实验名称_被试编号（如 exp1_clt_0112345678.xlsx）
+    // 存在低正确率条件（SS3/SS4 在 ≥200ms 正确率 < 50%）时在最前面加 F 标记；
+    // 调试模式不做该判定，因此永不带 F
+    const filePrefix = (!p.debugMode && ss4LowAccuracyFlag) ? 'F' : '';
+    const fileName = filePrefix + EXPERIMENT_NAME + '_' + p.subjectID + '.xlsx';
+    console.log(`[exp1_clt] 导出模式=${p.debugMode ? '调试' : '正式'} 被试编号=${p.subjectID} 文件名=${fileName}`);
     saveWorkbookFile(wb, fileName);
 }
 
@@ -1059,7 +1509,7 @@ function saveWorkbookFile(wb, fileName) {
     a.click();
     a.remove();
 
-    console.log(`[CLT] 已导出 ${fileName}（${u8.length} 字节，${wb.SheetNames.length} 个 sheet）`);
+    console.log(`[exp1_clt] 已导出 ${fileName}（${u8.length} 字节，${wb.SheetNames.length} 个 sheet）`);
     showManualDownload(fileName, url);
 }
 
@@ -1120,12 +1570,16 @@ function getStimLocs(nItems, cx, cy) {
     ];
 
     let perQuad;
-    if (nItems === 4) {
+    if (nItems === 3) {
+        // SS3 随机空出一个象限，其余三个象限各放一个色块；沿用同一 PRNG 保证可复现。
+        perQuad = [1, 1, 1, 0];
+        shuffleArray(perQuad);
+    } else if (nItems === 4) {
         perQuad = [1, 1, 1, 1];
     } else if (nItems === 6) {
         perQuad = quadPatterns6[randInt(0, 5)];
     } else {
-        throw new Error('getStimLocs: nItems must be 4 or 6, got ' + nItems);
+        throw new Error('getStimLocs: nItems must be 3, 4, or 6, got ' + nItems);
     }
 
     const qLo = [

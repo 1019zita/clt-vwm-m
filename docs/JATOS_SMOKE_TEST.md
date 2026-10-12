@@ -2,6 +2,8 @@
 
 Status: local and production MindProbe migration smoke tests passed on the corrected mouse repository.
 
+> Historical evidence only: this report validates `1.0.0-jatos-m.1` / build `20260917mj1`, including its former left/right certainty mapping and `responseKey`. Current source `2.0.0-jatos-m.1` / build `20261011mj1` uses 3×5 conditions, 450 formal trials, 15 practice trials, left-click-only responses, and no `responseKey`; it requires a new browser/JATOS smoke-test report before deployment.
+
 ## Automated preflight (2026-09-17)
 
 | Check | Result |
