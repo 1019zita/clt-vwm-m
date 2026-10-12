@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Documentation（2026-10-12，README / 部署文档改为修正版）
+
+- README 的「已验证线上历史基线与当前源码」改为「**当前状态（2026-10-12 更新）**」：
+  线上已部署 2.0.0（Study `28510` / Component `48853`，entry `exp1_clt.html`，commit `ff543d0`）、
+  生产 smoke 结果 `1268661` `FINISHED`、本地 JATOS 完整 450 试次验收；旧版 1.0.0 的数据明确标注为历史基线。
+- 修正结构树里 `src/storage/` 的说明（是 git submodule，不是仓库内普通目录）。
+- 把「断点续做」条目里前后矛盾的两段（旧 `<workerId>` 描述 + 新 `<subjectHash>` 修正）合并为一条。
+- `docs/MINDPROBE_DEPLOYMENT.md` 新增「当前线上部署（2026-10-12）」表，并说明覆盖既有 Study 的方式
+  （assets 上传 + `PATCH /jatos/api/v1/components/{id}` 改 `htmlFilePath`）与回滚路径。
+
 ### Fixed（2026-10-12，进度键名改为与被试绑定：续做在 General 链接下原本永不触发）
 
 MindProbe 实测：**General Single / Multiple 链接下 JATOS 每次运行都分配新的 workerId**

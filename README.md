@@ -14,17 +14,25 @@
 
 数据有两条输出路径：JATOS 构建会把正式 trial 逐条追加到服务器；实验正常结束时也会在访问设备上生成 XLSX。设备端 XLSX 是便利副本，不是服务器结果的替代品。源 `exp1_clt.html` 仍保留 Supabase 兼容入口和占位配置，legacy Supabase 实现尚未删除。
 
-## 已验证线上历史基线与当前源码
+## 当前状态（2026-10-12 更新）
 
-- 当前源码实验版本：`2.0.0-jatos-m.1`；页面 build：`20261011mj1`。
-- 当前源码尚未执行新的本地 JATOS / MindProbe 浏览器 smoke test，也尚未部署；不得把下述旧版验证结果当作 2.0.0 的验收证据。
-- 当前工作分支：`migration/jatos-mindprobe`。
-- 已部署实验资产对应 Git commit：`350900bfbf2c5a8cfd09d4e3e64322e2f686d10c`（旧版 `1.0.0-jatos-m.1` / build `20260917mj1`）。
-- 当前文档分支 HEAD（本轮改动前）：`96e07cc0d1dc7e1e5dd3cfe81d2c34373155b6bc`。
-- MindProbe Study / Component：`28510` / `48853`。
-- 旧版完整生产 smoke test：20 个正式 trial、4 个 checkpoint、1 个 final，结果状态 `FINISHED`。
+- 当前源码实验版本：`2.0.0-jatos-m.1`；页面 build：`20261011mj1`；入口 `exp1_clt.html`。
+- **线上已部署 2.0.0**：MindProbe Study `28510 CLT-VWM Mouse` / Component `48853`，
+  entry 已由 `clt.html` 改为 `exp1_clt.html`，线上资产与本仓库构建产物逐字节一致
+  （`scripts/jatos_deploy.py assets` 干跑 0 changed）。
+- **生产 smoke test 已完成**：结果 `1268661`，状态 `FINISHED`（15 练习 + 5 正式；console 无 error；
+  JATOS 侧 `session_start` / `trial`×5 / `checkpoint` / `final` / `csv_upload_attempt` / `csv_upload_status` 齐全）。
+- **本地 JATOS 3.11.1 完整正式模式已跑完一轮**：450 试次、9 个 block × 50、8 次休息、
+  15 种条件各 30、K 值表 18 行；JATOS 侧 450 条 `trial` + 9 条 `checkpoint` + 1 条 `final`
+  + CSV result file；全程 0 console error。
+- 已部署资产对应 Git commit：`ff543d0`（分支 `migration/jatos-mindprobe`，已合并到 `main`）；
+  `build/study-assets/build-info.json` 与该 commit 一致，部署前请重新核对。
+- 历史基线（`1.0.0-jatos-m.1` / build `20260917mj1` / commit `350900b` / 20 trial 的旧版生产 smoke）
+  仅作对照，不代表当前线上版本。
+- 尚未建立 Git release tag。
 
-迁移分支尚未合并到 `main`，也尚未建立 Git release tag。不要把当前 HEAD 和已部署资产 commit 混为一谈；部署前必须检查 `build/study-assets/build-info.json`。
+部署流程与回滚要点见 [docs/MINDPROBE_DEPLOYMENT.md](docs/MINDPROBE_DEPLOYMENT.md)；
+跨仓库的项目级记录见工作区根目录 `PROJECT_LOG.md`。
 
 ## Repository 结构
 
@@ -34,7 +42,7 @@
 ├─ exp1_clt.js                   # 实验流程、刺激、随机化、计分和 XLSX 导出
 ├─ style.css                # 页面与实验界面样式
 ├─ index.html               # 重定向到 exp1_clt.html，并保留 query/hash
-├─ src/storage/             # 统一 storage facade、JATOS 和 Supabase adapters
+├─ src/storage/             # git submodule：共享存储模板（facade + JATOS/Supabase adapters）
 ├─ vendor/                  # 本地 SheetJS
 ├─ scripts/                 # 构建、健康检查、部署和结果/Study 导出脚本
 ├─ tests/                   # 科研不变量、storage adapter、JZIP parser 测试
@@ -129,17 +137,15 @@ JATOS_API_TOKEN
 - GitHub 只保存源码、配置、脚本、文档和不含被试数据/秘密的 release metadata。
 - 不要把 MindProbe 当作唯一备份；设备端 XLSX 也不是权威备份。
 - 删除 Study、Results 或 legacy Supabase 数据属于破坏性操作，必须得到人工明确批准。
-- **断点续做（2026-10-10）**：误触 / 关窗后重进不必从头做——已完成 block 经 JATOS
-  Batch Session 暂存（键名 `exp1_clt:<workerId>`，只存匿名化进度、不存个人信息），
+- **断点续做**：误触 / 关窗后重进不必从头做——已完成 block 经 JATOS Batch Session 暂存，
   重进时从上次完成后的下一组继续。试次序列因 `buildFormalTrials` 固定 PRNG 基准
-  （`formalPrngBaseSeed = p.rndSeed + 7919`）而与首次完全一致。每行试次新增
-  append-only 字段 `resumedFromBlock` / `resumeCount`。仅 JATOS 后端生效。
-  **键名与被试绑定（2026-10-12 修正）**：键名是 `exp1_clt:<subjectHash>`
-  （被试编号的 SHA-256 前 16 位），因此同一个人换标签页 / 关窗重进 / 换设备都落到同一个键，
-  不同的人天然落到不同键，且**不依赖链接类型**。此前用 `jatos.workerId` 作后缀，
-  在 MindProbe 的 General Single/Multiple 链接下 JATOS 每次运行都分配新的 workerId
-  （实测同一条链接连续三次运行得到 1221113 / 1221129 / 1221133），续做永远不会触发；
-  Personal 链接因为 worker 绑在链接上才碰巧可用。现在两种链接都可以用。
+  （`formalPrngBaseSeed = p.rndSeed + 7919`）而与首次完全一致。每行试次新增 append-only 字段
+  `resumedFromBlock` / `resumeCount`。仅 JATOS 后端生效。
+  进度键名 = `exp1_clt:<subjectHash>`（被试编号的 SHA-256 前 16 位）：**与被试绑定、不依赖链接类型**，
+  同一个人换标签页 / 关窗重进 / 换设备都落到同一个键，不同人天然隔离；进度记录只含
+  `completedBlocks` / `resumeCount` / `updatedAt`，不含任何身份字段。
+  （早期版本用 `jatos.workerId` 作后缀，2026-10-12 在 MindProbe 实测发现 General Single/Multiple
+  链接下 JATOS 每次运行都分配新 workerId、续做永不触发，已修正。）
 
 ## 项目交接
 
